@@ -37,18 +37,22 @@ def register_command(name, pattern, cmd, bare=False, case_sensitive=False):
     """ Register command. """
     global commands
 
+    # Check if command is already registered.
     pattern = re.compile(pattern, re.IGNORECASE if not case_sensitive else 0)
     if (name, pattern, cmd, bare) in commands:
         raise EnvironmentError(_('Command {cmd} already registered.', cmd=cmd.__qualname__))
+
     commands.append((name, pattern, cmd, bare))
 
 def unregister_command(name, pattern, cmd, bare=False, case_sensitive=False):
     """ Unregister command. """
     global commands
     
+    # Check if command is registered.
     pattern = re.compile(pattern, re.IGNORECASE if not case_sensitive else 0)
     if (name, pattern, cmd, bare) not in commands:
         raise EnvironmentError(_('Command {cmd} not registered.', cmd=cmd.__qualname__))
+
     commands.remove((name, pattern, cmd, bare))
 
 def commands_for(server, channel):
