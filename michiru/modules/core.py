@@ -11,12 +11,6 @@ _ = personalities.localize
 
 admins = {}
 
-db.ensure('admins', {
-    'id': db.ID,
-    'server': db.STRING,
-    'channel': db.STRING,
-    'nickname': db.STRING
-})
 
 personalities.messages('fancy', {
     'This command is restricted to administrators.':
@@ -68,14 +62,14 @@ personalities.messages('tsun', {
 
 ## Helper functions.
 
-def _identified(server, nick):
+def _identified(bot, nick, channel):
     # LELELELELELE
-    return True
+    return bot.admin(nick, channel)
 
 def restricted(func):
     def inner(bot, server, target, source, message, parsed, private):
-        if not _identified(server, source[0]):
-            bot.privmsg(target, _('This command is restricted to administrators.', cmd=func.__name__))
+        if not _identified(bot, source[0], target):
+            raise EnvironmentError(_('This command is restricted to administrators.', cmd=func.__name__))
         else:
             return func(bot, server, target, source, message, parsed, private=private)
     inner.__name__ = func.__name__
@@ -91,34 +85,29 @@ def restricted(func):
 @restricted
 def addadmin(bot, server, target, source, message, parsed, private):
     nick = parsed.group(1)
-    serv = server
     chan = None
     if parsed.group(2):
         chan = parsed.group(2)
 
-    db.to('admins').add({
-        'server': serv,
-        'channel': chan,
-        'nickname': nick
-    })
+    bot.promote(nick, chan)
     bot.privmsg(target, _('Administrator {nick} added.', nick=nick))
 
-@command(r'listadmins')
-@command(r'list admins\.?$')
+@command(r'listadmins(?: (\S+))')
+@command(r'list admins(?: for channel (\S+))?\.?$')
 @restricted
 def listadmins(bot, server, target, source, message, parsed, private):
-    admins = db.from_('admins')\
-        .where('server', None).or_('server', server)\
-        .and_('channel', None).or_('channel', target)\
-        .get()
-    bot.privmsg(target, _('Administrators: {}', ', '.join(x['nickname'] for x in admins)))
+    bot.privmsg(target, _('Administrators: {}', ', '.join(bot.admins(parsed.group(1)))))
 
-@command(r'rmadmin (\S+)')
-@command(r'remove admin (\S+)\.?$')
+@command(r'rmadmin (\S+)(?: (\S+))?')
+@command(r'remove admin (\S+)(?: from channel (\S+))?\.?$')
 @restricted
 def rmadmin(bot, server, target, source, message, parsed, private):
     nick = parsed.group(1)
-    db.from_('admins').where('nickname', nick).delete()
+    chan = None
+    if parsed.group(2):
+        chan = parsed.group(2)
+
+    bot.demote(nick, chan)
     bot.privmsg(target, _('Administrator {nick} removed.', nick=nick))
 
 
@@ -279,6 +268,51 @@ def quit(bot, server, target, source, message, parsed, private):
     else:
         for bot in irc.bots.values():
             bot.quit(_('Quit'))
+
+
+## Ignore/unignore commands.
+
+@command(r'ignore (\S+)(?: (#\S+|everywhere))?\.?')
+@restricted
+def ignore(bot, server, target, source, message, parsed, private):
+    nick = parsed.group(1)
+    chan = parsed.group(2)
+    if chan == 'everywhere':
+        chan = None
+    elif chan is None:
+        chan = target
+
+    if not chan:
+        if bot.ignored(nick):
+            raise EnvironmentError(_('Already ignoring {nick}.', nick=nick))
+        bot.ignore(nick)
+        bot.privmsg(target, _('{nick} added to ignore list.', nick=nick))
+    else:
+        if bot.ignored(nick, chan):
+            raise EnvironmentError(_('Already ignoring {nick} on channel {chan}.', nick=nick, chan=chan))
+        bot.ignore(nick, chan)
+        bot.privmsg(target, _('{nick} added to ignore list for channel {chan}.', nick=nick, chan=chan))
+
+@command(r'unignore (\S+)(?: (#\S+|everywhere))?')
+@command(r'stop ignoring (\S+)(?: (?:on (\S+)|(everywhere))?)?\.?')
+def unignore(bot, server, target, source, message, parsed, private):
+    nick = parsed.group(1)
+    chan = parsed.group(2)
+    if chan == 'everywhere':
+        chan = None
+    elif chan is None:
+        chan = target
+
+    if not chan:
+        if not bot.ignored(nick):
+            raise EnvironmentError(_('Not ignoring {nick}.', nick=nick))
+        bot.unignore(nick)
+        bot.privmsg(target, _('{nick} removed from ignore list.', nick=nick))
+    else:
+        if not bot.ignored(nick, chan):
+            raise EnvironmentError(_('Not ignoring {nick} on channel {chan}.', nick=nick, chan=chan))
+        bot.unignore(nick, chan)
+        bot.privmsg(target, _('{nick} removed from ignore list for channel {chan}.', nick=nick, chan=chan))
 
 
 ## Configuration commands.
