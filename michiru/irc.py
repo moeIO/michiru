@@ -46,10 +46,10 @@ class IRCBot(lurklib.Client):
         self.michiru_history = {}
         self.michiru_ignores = []
         # Compile regexp we'll use to see if messages are intended for us.
-        self.michiru_message_pattern = '(?:{nick}[:,;]\s*|{prefixes})(.+)'.format(
+        self.michiru_message_pattern = re.compile('(?:{nick}[:,;]\s*|{prefixes})(.+)'.format(
             nick=self.current_nick,
             prefixes='[{chars}]'.format(chars=''.join(re.escape(x) for x in config.current['command_prefixes']))
-        )
+        ), re.IGNORECASE)
 
         # Fill ignore list from database.
         res = db.from_('_ignores').where('server', self.michiru_server_tag).get('channel', 'nickname')
@@ -57,7 +57,7 @@ class IRCBot(lurklib.Client):
             if channel:
                 self.michiru_ignores.append((nickname, channel))
             else:
-                self.michiru_ignores.append(nickame)
+                self.michiru_ignores.append(nickname)
 
 
     ## Added functionality.
@@ -243,7 +243,7 @@ class IRCBot(lurklib.Client):
         # 1. Message starts with our nickname followed by a delimiter and optional whitespace.
         # 2. Message starts with one of our configured command prefixes.
         # 3. Message is private.
-        matched_nick = re.match(self.michiru_message_pattern, message, re.IGNORECASE)
+        matched_nick = re.match(self.michiru_message_pattern, message)
         if matched_nick:
             parsed_message = matched_nick.group(1).strip()
         elif private:
@@ -261,7 +261,7 @@ class IRCBot(lurklib.Client):
                     try:
                         cmd(self, server, channel, source, message, matched_message, private=private)
                     except Exception as e:
-                        self.privmsg(channel, _('Error while executing [{mod}:{cmd}]: {err}', mod=module, cmd=cmd.__name__, err=e))
+                        self.notice(channel, _('Error while executing [{mod}:{cmd}]: {err}', mod=module, cmd=cmd.__name__, err=e))
                         traceback.print_exc()
             elif matched_nick:
                 matched_message = matcher.match(parsed_message)
@@ -270,14 +270,14 @@ class IRCBot(lurklib.Client):
                     try:
                         cmd(self, server, channel, source, parsed_message, matched_message, private=private)
                     except Exception as e:
-                        self.privmsg(channel, _('Error while executing [{mod}:{cmd}]: {err}', mod=module, cmd=cmd.__name__, err=e))
+                        self.notice(channel, _('Error while executing [{mod}:{cmd}]: {err}', mod=module, cmd=cmd.__name__, err=e))
                         traceback.print_exc()
 
         # And execute hooks.
         try:
             events.emit('irc.message', self, server, channel, source, message, private=False)
         except Exception as e:
-            self.privmsg(channel, _('Error while executing hooks for {event}: {err}', event='irc.msg', err=e))
+            self.privmsg(notice, _('Error while executing hooks for {event}: {err}', event='irc.msg', err=e))
 
     
     def on_privmsg(self, source, message):
