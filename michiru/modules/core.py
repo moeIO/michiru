@@ -9,8 +9,6 @@ import version
 from modules import command
 _ = personalities.localize
 
-admins = {}
-
 
 personalities.messages('fancy', {
     'This command is restricted to administrators.':
