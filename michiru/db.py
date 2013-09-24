@@ -17,6 +17,7 @@ BOOL = 'tinyint(1)'
 STRING = 'text'
 DATE = 'date'
 DATETIME = 'datetime'
+BINARY = 'blob'
 # Attributes.
 PRIMARY = 'PRIMARY KEY AUTOINCREMENT'
 ID = (INT, PRIMARY)
@@ -228,6 +229,11 @@ def val2db(val, raw=True):
     if isinstance(val, str):
         if not raw:
             return '"' + val.replace('"', '\\"') + '"'
+        return val
+
+    elif isinstance(val, bytes):
+        if not raw:
+            return b'"' + val.replace(b'"', b'\\"') + b'"' 
         return val
 
     elif isinstance(val, bool) and not raw:
