@@ -16,7 +16,7 @@ db.ensure('shouts', {
     'server': (db.STRING, db.INDEX),
     'channel': (db.STRING, db.INDEX),
     'shouter': db.STRING,
-    'shout': (db.STRING, db.INDEX),
+    'shout': db.BINARY,
     'time': db.DATETIME
 })
 
@@ -56,6 +56,8 @@ def shout(bot, server, target, source, message, parsed, private):
 
     if to_shout:
         id, to_shout = to_shout
+        to_shout = to_shout.decode('utf-8')
+
         # Store shout ID in case someone wants info on it.
         last_shouts[server, target] = id
 
@@ -67,7 +69,7 @@ def shout(bot, server, target, source, message, parsed, private):
         'server': server,
         'channel': target,
         'shouter': source[0],
-        'shout': shout,
+        'shout': shout.encode('utf-8'),
         'time': datetime.now()
     })
 
@@ -78,13 +80,14 @@ def who_shouted(bot, server, target, source, message, parsed, private):
 
     # Determine wanted shout.
     query = db.from_('shouts')
+
     if wanted == 'last':
         if (server, target) not in last_shouts.keys():
             bot.privmsg(target, _('No last shout for channel {chan} found.', serv=server, chan=target))
             return
         query.where('id', last_shouts[server, target])
     else:
-        query.where('shout', wanted)
+        query.where('shout', wanted.encode('utf-8'))
 
     # Look it up.
     shout = query.limit(1).single('shouter', 'time')
