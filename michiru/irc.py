@@ -15,6 +15,14 @@ _ = personalities.localize
 config.ensure('servers', {})
 config.ensure('command_prefixes', [':'])
 
+
+db.ensure('_admins', {
+    'id': db.ID,
+    'server': (db.STRING, db.INDEX),
+    'channel': (db.STRING, db.INDEX),
+    'nickname': db.STRING
+})
+
 db.ensure('_ignores', {
     'id': db.ID,
     'server': (db.STRING, db.INDEX),
@@ -56,11 +64,12 @@ class IRCBot(lurklib.Client):
     def ctcp_reply(self, target, type, message):
         return self.notice(target, self.ctcp_encode(type + ' ' + message))
 
+
     def ignore(self, who, chan=None):
         if chan:
-            self.michiru_ignores.append((nickname, chan))
+            self.michiru_ignores.append((who, chan))
         else:
-            self.michiru_ignores.append(nickname)
+            self.michiru_ignores.append(who)
 
         # Add ignore to database.
         db.to('_ignores').add({
@@ -86,6 +95,50 @@ class IRCBot(lurklib.Client):
     def ignored(self, who, chan=None):
         who = who[0] if isinstance(who, tuple) else who
         return who in self.michiru_ignores or (who, chan) in self.michiru_ignores
+
+
+    def promote(self, nick, chan=None):
+        admin = db.from_('_admins').where('server', self.michiru_server_tag) \
+                                   .and_('channel', chan) \
+                                   .and_('nickname', nick).single()
+        if admin:
+            if chan:
+                raise EnvironmentError(_('{nick} is already an administrator for channel {chan}.', nick=nick, chan=chan))
+            else:
+                raise EnvironmentError(_('{nick} is already an administrator.', nick=nick))
+
+        db.to('_admins').add({
+            'server': self.michiru_server_tag,
+            'channel': chan,
+            'nickname': nick
+        })
+
+    def demote(self, nick, chan=None):
+        admin = db.from_('_admins').where('server', self.michiru_server_tag) \
+                                   .and_('channel', chan) \
+                                   .and_('nickname', nick).single()
+
+        if admin:
+            if chan:
+                raise EnvironmentError(_('{nick} is not an administrator for channel {chan}.', nick=nick, chan=chan))
+            else:
+                raise EnvironmentError(_('{nick} is not an administrator.', nick=nick))
+
+        db.from_('_admins').where('server', self.michiru_server_tag) \
+                           .and_('channel', chan) \
+                           .and_('nickname', nick).delete()
+
+    def admins(self, chan=None):
+        admins = [ x['nickname'] for x in db.from_('_admins').where('server', self.michiru_server_tag).get('nickname') ]
+        if chan:
+            admins.extend([ x['nickname'] for x in db.from_('_admins').where('server', self.michiru_server_tag)
+                                                                      .and_('channel', chan)
+                                                                      .get('nickname') ])
+
+        return list(set(admins))
+
+    def admin(self, nick, chan=None):
+        return nick in self.admins(chan)
 
     def on_connect(self):
         if self.michiru_config.get('channels'):
