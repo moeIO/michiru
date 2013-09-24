@@ -42,8 +42,8 @@ elif sys.platform.startswith('darwin'):
             michiru.__name__
         )
 elif sys.platform.startswith('linux') or sys.platform.startswith('bsd'):
-    SITE_DIR = path.join('/etc', michiru.__name__.lower())
-    LOCAL_DIR = path.join(path.expanduser('~'), michiru.__name__.lower())
+    SITE_DIR = path.join('/etc', '.' + michiru.__name__.lower())
+    LOCAL_DIR = path.join(path.expanduser('~'), '.' + michiru.__name__.lower())
 else:
     raise EnvironmentError('Unknown platform!')
 
