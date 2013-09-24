@@ -6,6 +6,7 @@ import traceback
 
 import version as michiru
 import config
+import db
 import events
 import modules
 import personalities
@@ -13,6 +14,14 @@ _ = personalities.localize
 
 config.ensure('servers', {})
 config.ensure('command_prefixes', [':'])
+
+db.ensure('_ignores', {
+    'id': db.ID,
+    'server': (db.STRING, db.INDEX),
+    'channel': db.STRING,
+    'nickname': db.STRING
+})
+
 
 bots = {}
 
@@ -26,11 +35,20 @@ class IRCBot(lurklib.Client):
         self.michiru_server_tag = tag
         self.michiru_config = config.current['servers'][self.michiru_server_tag]
         self.michiru_history = {}
+        self.michiru_ignores = []
         # Compile regexp we'll use to see if messages are intended for us.
         self.michiru_message_pattern = '(?:{nick}[:,;]\s*|{prefixes})(.+)'.format(
             nick=self.current_nick,
             prefixes='[{chars}]'.format(chars=''.join(re.escape(x) for x in config.current['command_prefixes']))
         )
+
+        # Fill ignore list from database.
+        res = db.from_('_ignores').where('server', self.michiru_server_tag).get('channel', 'nickname')
+        for channel, nickname in res:
+            if channel:
+                self.michiru_ignores.append((nickname, channel))
+            else:
+                self.michiru_ignores.append(nickame)
 
     def ctcp(self, target, message):
         return self.privmsg(target, self.ctcp_encode(message))
@@ -38,46 +56,89 @@ class IRCBot(lurklib.Client):
     def ctcp_reply(self, target, type, message):
         return self.notice(target, self.ctcp_encode(type + ' ' + message))
 
-    def on_connect(self):
-        if not self.michiru_config.get('channels'):
-            return
+    def ignore(self, who, chan=None):
+        if chan:
+            self.michiru_ignores.append((nickname, chan))
+        else:
+            self.michiru_ignores.append(nickname)
 
-        # Join all channels we are supposed to.
-        for chan in self.michiru_config['channels']:
-            if isinstance(chan, tuple):
-                chan, password = chan
-            else:
-                password = None
-            self.join_(chan, password)
+        # Add ignore to database.
+        db.to('_ignores').add({
+            'server': self.michiru_server_tag,
+            'channel': chan,
+            'nickname': who
+        })
+
+    def unignore(self, who, chan=None):
+        if chan:
+            if not (who, chan) in self.michiru_ignores:
+                raise EnvironmentError(_('{nick} is not ignored in channel {chan}.', nick=nick, chan=chan))
+            self.michiru_ignores.remove((who, chan))
+        else:
+            if not who in self.michiru_ignores:
+                raise EnvironmentError(_('{nick} is not ignored.', nick=nick))
+            self.michiru_ignores.remove(who)
+
+        db.from_('_ignores').where('nickname', who) \
+                            .and_('server', self.michiru_server_tag) \
+                            .and_('channel', channel).delete()
+
+    def ignored(self, who, chan=None):
+        who = who[0] if isinstance(who, tuple) else who
+        return who in self.michiru_ignores or (who, chan) in self.michiru_ignores
+
+    def on_connect(self):
+        if self.michiru_config.get('channels'):
+            # Join all channels we are supposed to.
+            for chan in self.michiru_config['channels']:
+                if isinstance(chan, tuple):
+                    chan, password = chan
+                else:
+                    password = None
+                self.join_(chan, password)
 
         # Execute hook.
         events.emit('irc.connect', self, self.michiru_server_tag)
 
     def on_join(self, who, target):
+        if self.ignored(who, target):
+            return
         # Execute hook.
         events.emit('irc.join', self, self.michiru_server_tag, target, who)
 
     def on_part(self, who, target, reason):
+        if self.ignored(who, target):
+            return
         # Execute hook.
         events.emit('irc.part', self, self.michiru_server_tag, target, who, reason)
 
     def on_quit(self, who, reason):
+        if self.ignored(who):
+            return
         # Execute hook.
         events.emit('irc.disconnect', self, self.michiru_server_tag, who, reason)
 
     def on_kick(self, target, channel, by, reason):
+        if self.ignored(target, channel) or self.ignored(by, channel):
+            return
         # Execute hook.
         events.emit('irc.kick', self, self.michiru_server_tag, channel, target, by, reason)
 
     def on_invite(self, by, channel):
+        if self.ignored(by, channel):
+            return
         # Execute hook.
         events.emit('irc.invite', self, self.michiru_server_tag, channel, by)
 
     def on_nick(self, who, to):
+        if self.ignored(who) or self.ignored(to):
+            return
         # Execute hook.
         events.emit('irc.nickchange', self, self.michiru_server_tag, who, to)
 
     def on_channotice(self, source, channel, message, private=False):
+        if self.ignored(source, channel):
+            return
         # Execute hook.
         events.emit('irc.notice', self, self.michiru_server_tag, channel, source, message, private)
 
@@ -86,10 +147,15 @@ class IRCBot(lurklib.Client):
         return self.on_channotice(source, source[0], message, private=True)
 
     def on_topic(self, setter, channel, topic):
+        if self.ignored(setter, channel):
+            return
         # Execute hook.
         events.emit('irc.topicchange', self, self.michiru_server_tag, channel, setter, topic)
 
     def on_chanmsg(self, source, channel, message, private=False):
+        if self.ignored(source, channel):
+            return
+
         # See if message is meant for us, according to the following cases:
         # 1. Message starts with our nickname followed by a delimiter and optional whitespace.
         # 2. Message starts with one of our configured command prefixes.
@@ -136,6 +202,9 @@ class IRCBot(lurklib.Client):
         return self.on_chanmsg(source, source[0], message, private=True)
     
     def on_chanctcp(self, source, channel, message, private=False):
+        if self.ignored(source, channel):
+            return
+
         # Some default CTCP replies.
         if message == 'VERSION' or message == 'FINGER':
             self.ctcp_reply(source[0], message, '{m} v{v}'.format(m=michiru.__name__, v=michiru.__version__))
