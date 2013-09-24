@@ -154,7 +154,7 @@ def join(bot, server, channel, who):
 def part(bot, server, channel, who, reason):
     log(server, who[0], Actions.PART, chan=channel, reason=reason)
 
-@hook('irc.quit')
+@hook('irc.disconnect')
 def quit(bot, server, who, reason):
     log(server, who[0], Actions.QUIT, reason=reason)
 
