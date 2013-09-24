@@ -36,6 +36,8 @@ config.ensure_file(DB_FILE, writable=True)
 def ensure(name, structure):
     """ Ensure a data entry with given structure exists. """
     global handle, INDEX, UNIQUE
+
+    # Base query.
     query  = 'CREATE TABLE IF NOT EXISTS `{name}` ('.format(name=name)
 
     struct = []
@@ -58,6 +60,7 @@ def ensure(name, structure):
             indices.append(n)
         struct.append((n, type, attributes))
 
+    # Add structure to query and finalize it.
     query += ', '.join('`{}` {} {}'.format(n, type, ' '.join(attributes)) for n, type, attributes in struct)
     query += ')'
 
@@ -103,6 +106,7 @@ class Query:
             comparator = '='
             value = val
 
+        # Special case since None never compares to None using '='.
         if val is None and comparator == '=':
             comparator = 'is'
         self.constraints.append((name, comparator, val, 'or' if or_ else 'and'))
@@ -164,7 +168,7 @@ class Query:
 
     def add(self, values):
         """ Perform data insertion query. """
-        # Build query.
+        # Build query, nothing particularly special.
         query = 'INSERT INTO `{table}` '.format(table=self.table)
         query += '(`' + '`, `'.join(values.keys()) + '`) '
         query += 'VALUES (' + ', '.join(['?'] * len(values.keys())) + ')'
@@ -214,26 +218,37 @@ def to(table):
 
 
 def val2db(val, raw=True):
+    """
+    Convert value to database native value.
+    Set `raw` to True if you're using prepared statements,
+    False if you're directly inserting things into query strings.
+    """
     global DATETIME_FORMAT, DATE_FORMAT, TIME_FORMAT
 
     if isinstance(val, str):
         if not raw:
             return '"' + val.replace('"', '\\"') + '"'
         return val
-    elif isinstance(val, bool) and raw:
+
+    elif isinstance(val, bool) and not raw:
         return '1' if val else '0'
-    elif isinstance(val, int) and raw:
+
+    elif isinstance(val, int) and not raw:
         return str(val)
+
     elif isinstance(val, datetime.datetime):
         if not raw:
             return "'" + val.strftime(DATETIME_FORMAT) + "'"
         return val.strftime(DATETIME_FORMAT)
+
     elif isinstance(val, datetime.time):
         if not raw:
             return "'" + val.strftime(TIME_FORMAT) + "'"
         return val.strftime(TIME_FORMAT)
+
     elif isinstance(val, datetime.date):
         if not raw:
             return "'" + val.strftime(DATE_FORMAT) + "'"
         return val.strftime(DATE_FORMAT)
+
     return str(val)
