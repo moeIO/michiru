@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-# Loudbot module
+# Loudbot module.
 from datetime import datetime
 
 import db
 import personalities
 from modules import command
 _ = personalities.localize
+
+__name__ = 'loudbot'
+__author__ = 'Shiz'
+__license__ = 'WTFPL'
 
 db.ensure('shouts', {
     'id': db.ID,
@@ -41,14 +45,14 @@ personalities.messages('tsun', {
 
 last_shouts = {}
 
-@command('loudbot', '([^a-z]{8,})', case_sensitive=True, bare=True)
+@command('([^a-z]{8,})', case_sensitive=True, bare=True)
 def shout(bot, server, target, source, message, parsed, private):
     global last_shouts
     shout = parsed.group(1)
 
     # Fetch random shout.
-    to_shout = db.on('shouts').where('server', server).and_('channel', target) \
-                              .random().limit(1).single('id', 'shout')
+    to_shout = db.from_('shouts').where('server', server).and_('channel', target) \
+                                 .random().limit(1).single('id', 'shout')
 
     if to_shout:
         id, to_shout = to_shout
@@ -59,7 +63,7 @@ def shout(bot, server, target, source, message, parsed, private):
         bot.privmsg(target, to_shout)
 
     # Add shout to database.
-    db.on('shouts').add({
+    db.to('shouts').add({
         'server': server,
         'channel': target,
         'shouter': source[0],
@@ -67,13 +71,13 @@ def shout(bot, server, target, source, message, parsed, private):
         'time': datetime.now()
     })
 
-@command('loudbot', 'who (.+)')
+@command('who (.+)')
 def who_shouted(bot, server, target, source, message, parsed, private):
     global last_shouts
     wanted = parsed.group(1)
 
     # Determine wanted shout.
-    query = db.on('shouts')
+    query = db.from_('shouts')
     if wanted == 'last':
         if (server, target) not in last_shouts.keys():
             bot.privmsg(target, _('No last shout for channel {chan} found.', serv=server, chan=target))

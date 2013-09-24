@@ -3,5 +3,5 @@
 
 __name__ = 'Michiru'
 __version__ = '0.1'
-__author__ = 'Shiz'
+__author__ = 'moeIO'
 __source__ = 'https://github.com/Shizmob/michiru'

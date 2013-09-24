@@ -6,9 +6,9 @@ import version
 
 import config
 config.load()
-
 import db
 db.connect()
+
 import irc
 import modules
 import personalities

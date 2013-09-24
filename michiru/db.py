@@ -7,7 +7,9 @@ import sqlite3
 import version as michiru
 import config
 
-DB_FILE = 'db.sqlite3'
+config.ensure('db_file', 'db.sqlite3')
+
+DB_FILE = config.current['db_file']
 # SQLite 3 data definitions for abstraction.
 INT = 'integer'
 UINT = 'unsigned integer'
@@ -21,10 +23,15 @@ ID = (INT, PRIMARY)
 UNIQUE = '<uindex>'
 INDEX = '<index>'
 DEFAULT = lambda x: 'DEFAULT(' + val2db(x, raw=False) + ')'
+# Misc.
+DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
+DATE_FORMAT = '%Y-%m-%d'
+TIME_FORMAT = '%H:%M:%S'
 
 handle = None
 
 config.ensure_file(DB_FILE, writable=True)
+
 
 def ensure(name, structure):
     """ Ensure a data entry with given structure exists. """
@@ -80,6 +87,7 @@ def disconnect():
 
 
 class Query:
+    """ An object representing a query for easy method chaining. """
     def __init__(self, handle, table):
         self.handle = handle
         self.table = table
@@ -88,6 +96,7 @@ class Query:
         self.order_ = None
 
     def where(self, name, val, or_=False):
+        """ Add filter to query. """
         if isinstance(val, tuple):
             comparator, value = val
         else:
@@ -100,20 +109,25 @@ class Query:
         return self
 
     def or_(self, name, val):
+        """ Add OR filter to query. """
         return self.where(name, val, or_=True)
 
     def and_(self, name, val):
+        """ Add filter to query. """
         return self.where(name, val)
 
     def limit(self, limit):
+        """ Limit query results. """
         self.limit_ = limit
         return self
 
     def random(self):
+        """ Return the results in random order. """
         self.order_ = 'RANDOM()'
         return self
 
     def get(self, *fields):
+        """ Perform data retrieval query for `fields`. """
         # Build query.
         query  = 'SELECT {fields} FROM `{table}`'.format(fields='`' + '`, `'.join(fields) + '`' if fields else '*', table=self.table)
 
@@ -142,12 +156,14 @@ class Query:
         return cursor.fetchall()
     
     def single(self, *fields):
+        """ Perform data retrieval query for `fields` and return single row, or None. """
         result = self.get(*fields)
         if result:
             return result[0]
         return None
 
     def add(self, values):
+        """ Perform data insertion query. """
         # Build query.
         query = 'INSERT INTO `{table}` '.format(table=self.table)
         query += '(`' + '`, `'.join(values.keys()) + '`) '
@@ -158,6 +174,7 @@ class Query:
         self.handle.commit()
 
     def delete(self):
+        """ Perform data removal query. """
         query = 'DELETE FROM `{table}`'.format(table=self.table)
 
         # Build where.
@@ -178,15 +195,27 @@ class Query:
         cursor.execute(query, tuple(vals))
         self.handle.commit()
 
-
-
 def on(table):
     """ Start a query on given data. """
     global handle
     return Query(handle, table)
 
+def in_(table):
+    """ Start a query on given data. """
+    return on(table)
+
+def from_(table):
+    """ Start a query on given data. """
+    return on(table)
+
+def to(table):
+    """ Start a query on given data. """
+    return on(table)
+
 
 def val2db(val, raw=True):
+    global DATETIME_FORMAT, DATE_FORMAT, TIME_FORMAT
+
     if isinstance(val, str):
         if not raw:
             return '"' + val.replace('"', '\\"') + '"'
@@ -197,14 +226,14 @@ def val2db(val, raw=True):
         return str(val)
     elif isinstance(val, datetime.datetime):
         if not raw:
-            return "'" + val.strftime('%Y-%m-%d %H:%M:%S') + "'"
-        return val.strftime('%Y-%m-%d %H:%M:%S')
+            return "'" + val.strftime(DATETIME_FORMAT) + "'"
+        return val.strftime(DATETIME_FORMAT)
     elif isinstance(val, datetime.time):
         if not raw:
-            return "'" + val.strftime('%H:%M:%S') + "'"
-        return val.strftime('%H:%M:%S')
+            return "'" + val.strftime(TIME_FORMAT) + "'"
+        return val.strftime(TIME_FORMAT)
     elif isinstance(val, datetime.date):
         if not raw:
-            return "'" + val.strftime('%Y-%m-%d') + "'"
-        return val.strftime('%Y-%m-%d')
+            return "'" + val.strftime(DATE_FORMAT) + "'"
+        return val.strftime(DATE_FORMAT)
     return str(val)

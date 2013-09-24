@@ -6,6 +6,7 @@ import traceback
 
 import version as michiru
 import config
+import events
 import modules
 import personalities
 _ = personalities.localize
@@ -49,6 +50,45 @@ class IRCBot(lurklib.Client):
                 password = None
             self.join_(chan, password)
 
+        # Execute hook.
+        events.emit('irc.connect', self, self.michiru_server_tag)
+
+    def on_join(self, who, target):
+        # Execute hook.
+        events.emit('irc.join', self, self.michiru_server_tag, target, who)
+
+    def on_part(self, who, target, reason):
+        # Execute hook.
+        events.emit('irc.part', self, self.michiru_server_tag, target, who, reason)
+
+    def on_quit(self, who, reason):
+        # Execute hook.
+        events.emit('irc.disconnect', self, self.michiru_server_tag, who, reason)
+
+    def on_kick(self, target, channel, by, reason):
+        # Execute hook.
+        events.emit('irc.kick', self, self.michiru_server_tag, channel, target, by, reason)
+
+    def on_invite(self, by, channel):
+        # Execute hook.
+        events.emit('irc.invite', self, self.michiru_server_tag, channel, by)
+
+    def on_nick(self, who, to):
+        # Execute hook.
+        events.emit('irc.nickchange', self, self.michiru_server_tag, who, to)
+
+    def on_channotice(self, source, channel, message, private=False):
+        # Execute hook.
+        events.emit('irc.notice', self, self.michiru_server_tag, channel, source, message, private)
+
+    def on_privnotice(self, source, message):
+        # Private notices aren't any different.
+        return self.on_channotice(source, source[0], message, private=True)
+
+    def on_topic(self, setter, channel, topic):
+        # Execute hook.
+        events.emit('irc.topicchange', self, self.michiru_server_tag, channel, setter, topic)
+
     def on_chanmsg(self, source, channel, message, private=False):
         # See if message is meant for us, according to the following cases:
         # 1. Message starts with our nickname followed by a delimiter and optional whitespace.
@@ -84,12 +124,18 @@ class IRCBot(lurklib.Client):
                         self.privmsg(channel, _('Error while executing [{mod}:{cmd}]: {err}', mod=module, cmd=cmd.__name__, err=e))
                         traceback.print_exc()
 
+        # And execute hooks.
+        try:
+            events.emit('irc.message', self, server, channel, source, message, private=False)
+        except Exception as e:
+            self.privmsg(channel, _('Error while executing hooks for {event}: {err}', event='irc.msg', err=e))
+
     
     def on_privmsg(self, source, message):
         # Private messages aren't any different, except that they are always intended for us, so we don't need to check.
         return self.on_chanmsg(source, source[0], message, private=True)
     
-    def on_chanctcp(self, source, channel, message):
+    def on_chanctcp(self, source, channel, message, private=False):
         # Some default CTCP replies.
         if message == 'VERSION' or message == 'FINGER':
             self.ctcp_reply(source[0], message, '{m} v{v}'.format(m=michiru.__name__, v=michiru.__version__))
@@ -97,10 +143,13 @@ class IRCBot(lurklib.Client):
             self.ctcp_reply(source[0], message, michiru.__source__)
         elif message == 'USERINFO':
             info = self.michiru_config
-            self.ctcp_reply(source[0], message, '{user} ({real})'.format(info.get('username', info['nickname']), info.get('realname', info['nickname'])))
+            self.ctcp_reply(source[0], message, '{user} ({real})'.format(user=info.get('username', info['nickname']), real=info.get('realname', info['nickname'])))
+        
+        # And execute hooks.
+        events.emit('irc.ctcp', self, self.michiru_server_tag, channel, source, message)
 
     def on_privctcp(self, source, message):
-        return self.on_chanctcp(source, source[0], message)
+        return self.on_chanctcp(source, source[0], message, private=True)
 
 def setup():
     """ Setup the bots. """

@@ -86,8 +86,8 @@ def restricted(func):
 
 ## Admin commands.
 
-@command('core', r'addadmin (\S+)(?: (\S+))?')
-@command('core', r'add admin (\S+)(?: on channel (\S+))?\.?$')
+@command(r'addadmin (\S+)(?: (\S+))?')
+@command(r'add admin (\S+)(?: on channel (\S+))?\.?$')
 @restricted
 def addadmin(bot, server, target, source, message, parsed, private):
     nick = parsed.group(1)
@@ -96,36 +96,36 @@ def addadmin(bot, server, target, source, message, parsed, private):
     if parsed.group(2):
         chan = parsed.group(2)
 
-    db.on('admins').add({
+    db.to('admins').add({
         'server': serv,
         'channel': chan,
         'nickname': nick
     })
     bot.privmsg(target, _('Administrator {nick} added.', nick=nick))
 
-@command('core', r'listadmins')
-@command('core', r'list admins\.?$')
+@command(r'listadmins')
+@command(r'list admins\.?$')
 @restricted
 def listadmins(bot, server, target, source, message, parsed, private):
-    admins = db.on('admins')\
+    admins = db.from_('admins')\
         .where('server', None).or_('server', server)\
         .and_('channel', None).or_('channel', target)\
         .get()
     bot.privmsg(target, _('Administrators: {}', ', '.join(x['nickname'] for x in admins)))
 
-@command('core', r'rmadmin (\S+)')
-@command('core', r'remove admin (\S+)\.?$')
+@command(r'rmadmin (\S+)')
+@command(r'remove admin (\S+)\.?$')
 @restricted
 def rmadmin(bot, server, target, source, message, parsed, private):
     nick = parsed.group(1)
-    db.on('admins').where('nickname', nick).delete()
+    db.from_('admins').where('nickname', nick).delete()
     bot.privmsg(target, _('Administrator {nick} removed.', nick=nick))
 
 
 ## Module commands.
 
-@command('core', r'enable (\S+)(?: (\S+)(?: (\S+))?)?')
-@command('core', r'enable (\S+)(?: on (\S+)(?:, channel (\S+))?)?\.?$')
+@command(r'enable (\S+)(?: (\S+)(?: (\S+))?)?')
+@command(r'enable (\S+)(?: on (\S+)(?:, channel (\S+))?)?\.?$')
 @restricted
 def enable(bot, server, target, source, message, parsed, private):
     module = parsed.group(1)
@@ -149,8 +149,7 @@ def enable(bot, server, target, source, message, parsed, private):
 
         bot.privmsg(target, _('Module {mod} enabled for channel {chan}.', mod=module, srv=server, chan=target))
 
-@command('core', r'disable (\S+)(?: (\S+)(?: (\S+))?)?')
-@command('core', r'disable (\S+)(?: on (\S+)(?:, channel (\S+))?)?\.?$')
+@command(r'disable (\S+)(?: (?: on)?(\S+)(?:(?:, channel)? (\S+))?)?\.?')
 @restricted
 def disable(bot, server, target, source, message, parsed, private):
     module = parsed.group(1)
@@ -175,21 +174,21 @@ def disable(bot, server, target, source, message, parsed, private):
         bot.privmsg(target, _('Module {mod} disabled for channel {chan}.', mod=module, srv=server, chan=target))
 
 
-@command('core', r'load (?: the)?(\S+)(?: module)?\.?$')
+@command(r'load (?: the)?(\S+)(?: module)?\.?$')
 @restricted
 def load(bot, server, target, source, message, parsed, private):
     module = parsed.group(1)
     modules.load(module)
     bot.privmsg(target, _('Module {mod} loaded.', mod=module))
 
-@command('core', r'unload (?:the )?(\S+)(?: module)?(?:(?:the )?hard(?: way)?)?\.?')
+@command(r'unload (?:the )?(\S+)(?: module)?(?:(?:the )?hard(?: way)?)?\.?')
 @restricted
 def unload(bot, server, target, source, message, parsed, private):
     module = parsed.group(1)
     modules.unload(module)
     bot.privmsg(target, _('Module {mod} unloaded.', mod=module))
 
-@command('core', r'reload (?:the )?(\S+)(?: module)?\.?')
+@command(r'reload (?:the )?(\S+)(?: module)?\.?')
 @restricted
 def reload(bot, server, target, source, message, parsed, private):
     module = parsed.group(1)
@@ -199,7 +198,7 @@ def reload(bot, server, target, source, message, parsed, private):
 
 ## Join/part servers/channels.
 
-@command('core', r'join (\S+)(?: (\S+)(?: (\S+))?)?\.?$')
+@command(r'join (\S+)(?: (\S+)(?: (\S+))?)?\.?$')
 @restricted
 def join(bot, server, target, source, message, parsed, private):
     if parsed.group(2):
@@ -213,7 +212,7 @@ def join(bot, server, target, source, message, parsed, private):
         raise EnvironmentError(_('Unknown server {srv}.', srv=target_serv))
     irc.bots[target_serv].join_(target_chan, parsed.group(3))
 
-@command('core', r'part(?: (\S+)(?: (\S+)(?: (\S+))?)?)?\.?$')
+@command(r'part(?: (\S+)(?: (\S+)(?: (\S+))?)?)?\.?$')
 @restricted
 def part(bot, server, target, source, message, parsed, private):
     if parsed.group(2):
@@ -230,8 +229,8 @@ def part(bot, server, target, source, message, parsed, private):
         raise EnvironmentError(_('Unknown server {srv}.', srv=target_serv))
     irc.bots[target_serv].part(target_chan, parsed.group(3) or _('Parted.'))
 
-@command('core', r'connect (\S+)(?: ([0-9]+)(?: (true|false))?)?')
-@command('core', r'connect to (\S+)(?: with port ([0-9]+)(?: and TLS set to (true|false))?)?\.?$')
+@command(r'connect (\S+)(?: ([0-9]+)(?: (true|false))?)?')
+@command(r'connect to (\S+)(?: with port ([0-9]+)(?: and TLS set to (true|false))?)?\.?$')
 @restricted
 def connect(bot, server, target, source, message, parsed, private):
     info = bot.michiru_config.copy()
@@ -268,7 +267,7 @@ def connect(bot, server, target, source, message, parsed, private):
 
     bot.privmsg(target, _('Connected to {tag} successfully.', tag=tag, host=info['host'], port=info['port']))
 
-@command('core', r'quit(?: (\S+)?)?\.?')
+@command(r'quit(?: (\S+)?)?\.?')
 @restricted
 def quit(bot, server, target, source, message, parsed, private):
     if parsed.group(1):
@@ -284,35 +283,35 @@ def quit(bot, server, target, source, message, parsed, private):
 
 ## Configuration commands.
 
-@command('core', r'loadconf')
+@command(r'loadconf')
 @restricted
 def loadconf(bot, server, target, source, message, parsed, private):
     config.load()
     bot.privmsg(target, _('Configuration loaded.'))
 
-@command('core', r'saveconf')
-@command('core', r'save (?:your |the )?configuration\.?$')
+@command(r'saveconf')
+@command(r'save (?:your |the )?configuration\.?$')
 @restricted
 def saveconf(bot, server, target, source, message, parsed, private):
     config.save()
     bot.privmsg(target, _('Configuration saved.'))
 
-@command('core', r'set (\S+)(?: to)? (.+)\.?$')
+@command(r'set (\S+)(?: to)? (.+)\.?$')
 @restricted
 def set(bot, server, target, source, message, parsed, private):
     name, value = parsed.group(1, 2)
     config.current[name] = eval(value)
     bot.privmsg(target, _('Configuration item {name} set.', name=name))
 
-@command('core', r'setraw (\S+) (.+)')
-@command('core', r'set (\S+) raw to (.+)\.?$')
+@command(r'setraw (\S+) (.+)')
+@command(r'set (\S+) raw to (.+)\.?$')
 def setraw(bot, server, target, source, message, parsed, private):
     name, value = parsed.group(1, 2)
     exec('config.current{name} = {val}'.format(name=name, val=value))
     bot.privmsg(target, _('Configuration item {name} set.', name=name))
 
-@command('core', r'get (\S+)')
-@command('core', r'what\'s the value of (\S+)\??$')
+@command(r'get (\S+)')
+@command(r'what\'s the value of (\S+)\??$')
 @restricted
 def set(bot, server, target, source, message, parsed, private):
     name = parsed.group(1)
@@ -322,24 +321,24 @@ def set(bot, server, target, source, message, parsed, private):
 
 ## Misc commands.
 
-@command('core', r'nick (\S+)')
-@command('core', r'change nick(?:name)? to (\S+)\.?$')
+@command(r'nick (\S+)')
+@command(r'change nick(?:name)? to (\S+)\.?$')
 @restricted
 def nick(bot, server, target, source, message, parsed, private):
     bot.nick(parsed.group(1))
 
-@command('core', r'help\??')
-@command('core', r'commands')
-@command('core', r'what are your commands\??$')
+@command(r'help\??')
+@command(r'commands')
+@command(r'what are your commands\??$')
 def help(bot, server, target, source, message, parsed, private):
     bot.privmsg(target, _('Help yourself.'))
 
-@command('core', r'error (.*)')
+@command(r'error (.*)')
 def error(bot, server, target, source, message, parsed, private):
     raise ValueError(parsed.group(1))
 
-@command('core', r'version')
-@command('core', r'what are you\??$')
+@command(r'version')
+@command(r'what are you\??$')
 def version_(bot, server, target, source, message, parsed, private):
     bot.privmsg(target, 'This is {n} v{v}, ready to serve.'.format(n=version.__name__, v=version.__version__))
 

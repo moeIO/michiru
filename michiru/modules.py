@@ -6,6 +6,7 @@ import os.path as path
 import re
 
 import config
+import events
 import personalities
 _ = personalities.localize
 
@@ -24,7 +25,13 @@ __path__ = [
 
 modules = {}
 commands = []
+
+# Used by decorators at module init time.
 _commands = []
+_hooks = []
+
+
+## Commands.
 
 def register_command(name, pattern, cmd, bare=False, case_sensitive=False):
     """ Register command. """
@@ -70,6 +77,8 @@ def commands_for(server, channel):
     return enabledcmds
 
 
+## Module enabling/disabling.
+
 def enable(name, server=None, channel=None):
     """ Enable module for given server and/or channel, or globally. """
     if server:
@@ -103,22 +112,35 @@ def disable(name, server=None, channel=None):
         config.current['module_overrides'][name] = False
 
 
-def command(module, pattern, bare=False, case_sensitive=False):
+## Decorators.
+
+def command(pattern, bare=False, case_sensitive=False):
     """ Decorator a module can use for commands. """
     global _commands
 
     def inner(func):
-        _commands.append((module, pattern, func, bare, case_sensitive))
+        _commands.append((pattern, func, bare, case_sensitive))
         return func
     return inner
 
+def hook(event):
+    """ Decorator a module can use for hooks. """
+    global _hooks
+
+    def inner(func):
+        _hooks.append((event, func))
+        return func
+    return inner
+
+
+# Module loading/unloading.
 
 def load(name, soft=True, reload=False):
     """
     Load the given module. If doing a soft load, will not try to load the module from disk again,
     if it's not required. If doing a reload, will unload() the module first.
     """
-    global __path__, modules, _commands
+    global __path__, modules, _commands, _hooks
     name = path.basename(name)
     
     # Decide if the module is already loaded and if we need to unload it.
@@ -149,27 +171,34 @@ def load(name, soft=True, reload=False):
         except Exception as e:
             raise EnvironmentError(_('Error while loading module {mod}: {err}', mod=name, err=e))
 
-        # Add command registering/unregistering automagic to load/unload functions.
-        if _commands:
+        # Add command and hook registering/unregistering automagic to load/unload functions.
+        if _commands or _hooks:
             # I love capturing variables.
             cmds = _commands
+            hks = _hooks
             mld = module['load']
             muld = module['unload']
 
             # And local functions.
             def ld():
-                for module, pattern, cmd, bare, case_sensitive in cmds:
-                    register_command(module, pattern, cmd, bare, case_sensitive)
+                for pattern, cmd, bare, case_sensitive in cmds:
+                    register_command(name, pattern, cmd, bare, case_sensitive)
+                for event, cmd in hks:
+                    events.register_hook(event, cmd)
                 return mld()
 
             def uld():
-                for module, pattern, cmd, bare, case_sensitive in cmds:
-                    unregister_command(module, pattern, cmd, bare, case_sensitive)
+                for pattern, cmd, bare, case_sensitive in cmds:
+                    unregister_command(name, pattern, cmd, bare, case_sensitive)
+                for event, cmd in hks:
+                    events.unregister_hook(event, cmd)
+
                 return muld()
 
             module['load'] = ld
             module['unload'] = uld
             _commands = []
+            _hooks = []
 
         modules[name] = module, False, False
 
