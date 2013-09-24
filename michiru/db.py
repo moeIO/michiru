@@ -18,9 +18,9 @@ DATETIME = 'datetime'
 # Attributes.
 PRIMARY = 'PRIMARY KEY AUTOINCREMENT'
 ID = (INT, PRIMARY)
-UNIQUE = 'UNIQUE'
+UNIQUE = '<uindex>'
 INDEX = '<index>'
-DEFAULT = lambda x: 'DEFAULT(' + val2db(x, escape=True) + ')'
+DEFAULT = lambda x: 'DEFAULT(' + val2db(x, raw=False) + ')'
 
 handle = None
 
@@ -28,24 +28,41 @@ config.ensure_file(DB_FILE, writable=True)
 
 def ensure(name, structure):
     """ Ensure a data entry with given structure exists. """
-    global handle
+    global handle, INDEX, UNIQUE
     query  = 'CREATE TABLE IF NOT EXISTS `{name}` ('.format(name=name)
 
     struct = []
+    indices = []
+    unique_indices = []
     # Set up structure.
-    for name, val in structure.items():
+    for n, val in structure.items():
         if isinstance(val, tuple):
-            type, attributes = val[0], val[1:]
+            type, attributes = val[0], list(val[1:])
         else:
             type = val
-            attributes = ''
-        struct.append((name, type, attributes))
+            attributes = []
 
-    query += ', '.join('`{}` {} {}'.format(name, type, ' '.join(attributes)) for name, type, attributes in struct)
+        # Store indices for later use.
+        if UNIQUE in attributes:
+            attributes.remove(UNIQUE)
+            unique_indices.append(n)
+        if INDEX in attributes:
+            attributes.remove(INDEX)
+            indices.append(n)
+        struct.append((n, type, attributes))
+
+    query += ', '.join('`{}` {} {}'.format(n, type, ' '.join(attributes)) for n, type, attributes in struct)
     query += ')'
 
+    # Create table.
     cursor = handle.cursor()
     cursor.execute(query)
+
+    # Create indices.
+    for idx in indices:
+        cursor.execute('CREATE INDEX IF NOT EXISTS `{name}` ON `{table}` (`{name}`)'.format(table=name, name=idx))
+    for idx in unique_indices:
+        cursor.execute('CREATE UNIQUE INDEX IF NOT EXISTS `{name}` ON `{table}` (`{name}`)'.format(table=name, name=idx))
     handle.commit()
 
 

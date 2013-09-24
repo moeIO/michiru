@@ -9,10 +9,10 @@ _ = personalities.localize
 
 db.ensure('shouts', {
     'id': db.ID,
-    'server': db.STRING,
-    'channel': db.STRING,
+    'server': (db.STRING, db.INDEX),
+    'channel': (db.STRING, db.INDEX),
     'shouter': db.STRING,
-    'shout': db.STRING,
+    'shout': (db.STRING, db.INDEX),
     'time': db.DATETIME
 })
 
