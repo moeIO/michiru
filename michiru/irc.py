@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Michiru's IRC core.
 import re
+import time
 import lurklib
 import traceback
 
@@ -163,6 +164,13 @@ class IRCBot(lurklib.Client):
     ## Event handlers.
 
     def on_connect(self):
+        # Authenticate if possible.
+        if self.michiru_config.get('nickserv_password'):
+            self.privmsg('NickServ', 'identify {}'.format(self.michiru_config['nickserv_password']))
+
+            # Give it a tiny bit of time before attempting to join channels to verify us.
+            time.sleep(1)
+
         if self.michiru_config.get('channels'):
             # Join all channels we are supposed to.
             for chan in self.michiru_config['channels']:
