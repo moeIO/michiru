@@ -12,15 +12,18 @@ __name__ = 'seenbot'
 __author__ = 'Shiz'
 __license__ = 'WTFPL'
 
+# Database structure.
 db.ensure('seen', {
     'id': db.ID,
-    'server': db.STRING,
-    'nickname': db.STRING,
-    'action': (db.INT),
-    'data': (db.STRING),
-    'time': (db.DATETIME)
+    'server': (db.STRING, db.INDEX),
+    'nickname': (db.STRING, db.INDEX),
+    'action': db.INT,
+    'data': db.STRING,
+    'time': db.DATETIME
 })
 
+
+# The action values. Fake enum.
 class Actions:
     JOIN = 0x1
     PART = 0x2
@@ -33,6 +36,7 @@ class Actions:
     NOTICE = 0x9
     TOPICCHANGE = 0x10
     CTCP = 0x11
+
 
 
 def timespan(date, current=None, reach=2):
@@ -58,8 +62,12 @@ def timespan(date, current=None, reach=2):
     delta = int((current - date).total_seconds())
 
     for i, (singular, plural, seconds) in enumerate(timespans):
+        # Is our time at least one 'unit' worth of this span?
         if delta >= seconds:
+            # Get the number of units it's worth, and the remainder.
             n, delta = divmod(delta, seconds)
+
+            # Append to message.
             if message is not None:
                 message += ', '
             else:
@@ -67,6 +75,7 @@ def timespan(date, current=None, reach=2):
                 message = ''
             message += '{n} {noun}'.format(n=n, noun=plural if n >= 2 else singular)
 
+        # Stop if we reached our precision limit.
         if reachstart is not None and reach is not None and i - reachstart + 1 >= reach:
             break
 
@@ -76,11 +85,13 @@ def timespan(date, current=None, reach=2):
         message += ' ago'
     return message
 
+
 @command(r'seen (\S+)$')
 @command(r'have you seen (\S+)(?: lately)?\??$')
 def seen(bot, server, target, source, message, parsed, private):
     nick = parsed.group(1)
 
+    # Weed out the odd cases.
     if nick == source[0]:
         bot.privmsg(target, _('Asking for yourself?', serv=server, nick=nick))
         return
@@ -88,6 +99,7 @@ def seen(bot, server, target, source, message, parsed, private):
         bot.privmsg(target, _("I'm right here.", serv=server, nick=nick))
         return
 
+    # Do we have an entry for this nick?
     entry = db.from_('seen').where('nickname', nick).and_('server', server).single('action', 'data', 'time')
     if not entry:
         bot.privmsg(target, _("I don't know who {nick} is.", serv=server, nick=nick))
@@ -95,10 +107,12 @@ def seen(bot, server, target, source, message, parsed, private):
 
     message = 'I saw {nick} {timeago}, {action}'
     submessage = None
+
     action, raw_data, raw_time = entry
     data = json.loads(raw_data)
     time = datetime.strptime(raw_time, db.DATETIME_FORMAT)
 
+    # Huge if/else chain incoming.
     if action == Actions.JOIN:
         submessage = _('joining {chan}.', serv=server, **data)
     elif action == Actions.PART:
@@ -120,7 +134,7 @@ def seen(bot, server, target, source, message, parsed, private):
     elif action == Actions.TOPICCHANGE:
         submessage = _('changing topic for {chan} to "{topic}".', serv=server, **data)
     elif action == Actions.CTCP:
-        submessage = _('CTCPing {target}.', serv=server, **data)
+        submessage = _('CTCPing {target} ({message}).', serv=server, **data)
     else:
         submessage = _('doing something.', serv=server, **data)
 
@@ -130,6 +144,7 @@ def seen(bot, server, target, source, message, parsed, private):
 
 ## Hooks.
 def log(server, nick, what, **data):
+    """ Remove earlier entries for `nick` from database and insert new log entry. """
     db.from_('seen').where('nickname', nick).and_('server', server).delete()
 
     db.to('seen').add({
