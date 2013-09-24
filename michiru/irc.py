@@ -58,14 +58,20 @@ class IRCBot(lurklib.Client):
             else:
                 self.michiru_ignores.append(nickame)
 
+
+    ## Added functionality.
+
     def ctcp(self, target, message):
+        """ Send CTCP request to target. """
         return self.privmsg(target, self.ctcp_encode(message))
 
     def ctcp_reply(self, target, type, message):
+        """ Send CTCP reply to target. """
         return self.notice(target, self.ctcp_encode(type + ' ' + message))
 
 
     def ignore(self, who, chan=None):
+        """ Ignore user, optionally only in `chan`. """
         if chan:
             self.michiru_ignores.append((who, chan))
         else:
@@ -79,6 +85,7 @@ class IRCBot(lurklib.Client):
         })
 
     def unignore(self, who, chan=None):
+        """ Remove ignore for user. """
         if chan:
             if not (who, chan) in self.michiru_ignores:
                 raise EnvironmentError(_('{nick} is not ignored in channel {chan}.', nick=nick, chan=chan))
@@ -88,25 +95,31 @@ class IRCBot(lurklib.Client):
                 raise EnvironmentError(_('{nick} is not ignored.', nick=nick))
             self.michiru_ignores.remove(who)
 
+        # Remove ignore.
         db.from_('_ignores').where('nickname', who) \
                             .and_('server', self.michiru_server_tag) \
                             .and_('channel', channel).delete()
 
     def ignored(self, who, chan=None):
+        """ Check if user is ignored. """
         who = who[0] if isinstance(who, tuple) else who
         return who in self.michiru_ignores or (who, chan) in self.michiru_ignores
 
 
     def promote(self, nick, chan=None):
+        """ Promote given user to administrator, optionally only in `chan`. """
+        # Check if user already is an admin.
         admin = db.from_('_admins').where('server', self.michiru_server_tag) \
                                    .and_('channel', chan) \
                                    .and_('nickname', nick).single()
+
         if admin:
             if chan:
                 raise EnvironmentError(_('{nick} is already an administrator for channel {chan}.', nick=nick, chan=chan))
             else:
                 raise EnvironmentError(_('{nick} is already an administrator.', nick=nick))
 
+        # Add admin to database.
         db.to('_admins').add({
             'server': self.michiru_server_tag,
             'channel': chan,
@@ -114,31 +127,40 @@ class IRCBot(lurklib.Client):
         })
 
     def demote(self, nick, chan=None):
+        """ Remove administrator status from user. """
+        # Check if user is an admin.
         admin = db.from_('_admins').where('server', self.michiru_server_tag) \
                                    .and_('channel', chan) \
                                    .and_('nickname', nick).single()
 
-        if admin:
+        if not admin:
             if chan:
                 raise EnvironmentError(_('{nick} is not an administrator for channel {chan}.', nick=nick, chan=chan))
             else:
                 raise EnvironmentError(_('{nick} is not an administrator.', nick=nick))
 
+        # Remove admin from database.
         db.from_('_admins').where('server', self.michiru_server_tag) \
                            .and_('channel', chan) \
                            .and_('nickname', nick).delete()
 
     def admins(self, chan=None):
+        """ List admins for server, and optionally for `chan`. """
         admins = [ x['nickname'] for x in db.from_('_admins').where('server', self.michiru_server_tag).get('nickname') ]
         if chan:
             admins.extend([ x['nickname'] for x in db.from_('_admins').where('server', self.michiru_server_tag)
                                                                       .and_('channel', chan)
                                                                       .get('nickname') ])
 
+        # Weed out double entries.
         return list(set(admins))
 
     def admin(self, nick, chan=None):
+        """ Check if given nickname is admin or channel admin. """
         return nick in self.admins(chan)
+
+
+    ## Event handlers.
 
     def on_connect(self):
         if self.michiru_config.get('channels'):
