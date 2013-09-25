@@ -18,4 +18,8 @@ def emit(event, *args, **kwargs):
     """ Emit event. """
     if event in hooks:
         for hook in hooks[event]:
-            hook(*args, **kwargs)
+            try:
+                hook(*args, **kwargs)
+            except:
+                import traceback
+                traceback.print_exc()
