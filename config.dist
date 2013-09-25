@@ -1,0 +1,25 @@
+# Modules to automatically load.
+modules = []
+
+# Servers to connect to.
+servers = {
+    'rizon': {
+        'channels': ['#test1', '#test2'],
+        'host': 'irc.rizon.net',
+        'nickname': 'Michiru',
+        'port': 6697,
+        'tls': True,
+        'nickserv_password': None
+    }
+}
+
+# Enable/disable overrides for modules.
+module_overrides = {}
+module_individual_overrides = {}
+
+# Miscellaneous stuff.
+personality = 'plain'
+command_prefixes = [':']
+
+# Module options.
+knowitall_wolfram_api_key = None
