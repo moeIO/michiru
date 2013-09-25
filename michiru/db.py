@@ -236,6 +236,9 @@ def val2db(val, raw=True):
             return b'"' + val.replace(b'"', b'\\"') + b'"' 
         return val
 
+    elif val is None:
+        return val
+
     elif isinstance(val, bool) and not raw:
         return '1' if val else '0'
 
