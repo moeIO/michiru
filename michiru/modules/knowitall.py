@@ -63,14 +63,18 @@ def get_definition(wanted, sources=['urbandictionary', 'wolframalpha']):
         wares = client.query(wanted)
 
         wadef = []
-        for pod in wares.results:
+        for pod in wares.pods:
             text = pod.text
             if text:
+                if pod.title and pod.title != 'Result' and pod.title != 'Input interpretation':
+                    text = '{b}[{title}]{/b} '.format(title=pod.title, **personalities.IRC_CODES) + text
                 text = text.strip()
                 # Reorder formatting a bit.
                 text = text.replace('\n', ' - ')
+                text = text.replace(' | ', ': ')
+                text = re.sub(r' - \(as seen by .+?\)', '', text)
                 text = re.sub(r' - \(according to .+?\)', '', text)
-                text = re.sub(r' - \(', '(', text)
+                text = re.sub(r' - \(', ' (', text)
                 text = re.sub(r'\s+', ' ', text)
                 wadef.append(text)
 
