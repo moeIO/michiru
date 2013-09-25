@@ -125,7 +125,7 @@ def enable(bot, server, target, source, message, parsed, private):
     elif parsed.group(2):
         server = parsed.group(2)
 
-        if server != 'global':
+        if server != 'global' and server != 'globally':
             modules.enable(module, server)
             bot.privmsg(target, _('Module {mod} enabled for server {srv}.', mod=module, srv=server))
         else:
@@ -149,7 +149,7 @@ def disable(bot, server, target, source, message, parsed, private):
     elif parsed.group(2):
         server = parsed.group(2)
 
-        if server != 'global':
+        if server != 'global' and server != 'globally':
             modules.disable(module, server)
             bot.privmsg(target, _('Module {mod} disabled for server {srv}.', mod=module, srv=server))
         else:
