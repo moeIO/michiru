@@ -90,7 +90,7 @@ def addadmin(bot, server, target, source, message, parsed, private):
     bot.promote(nick, chan)
     bot.privmsg(target, _('Administrator {nick} added.', nick=nick))
 
-@command(r'listadmins(?: (\S+))')
+@command(r'listadmins(?: (\S+))?')
 @command(r'list admins(?: for channel (\S+))?\.?$')
 @restricted
 def listadmins(bot, server, target, source, message, parsed, private):
