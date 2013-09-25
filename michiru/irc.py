@@ -147,7 +147,7 @@ class IRCBot(lurklib.Client):
 
     def admins(self, chan=None):
         """ List admins for server, and optionally for `chan`. """
-        admins = [ x['nickname'] for x in db.from_('_admins').where('server', self.michiru_server_tag).get('nickname') ]
+        admins = [ x['nickname'] for x in db.from_('_admins').where('server', self.michiru_server_tag).and_('channel', None).get('nickname') ]
         if chan:
             admins.extend([ x['nickname'] for x in db.from_('_admins').where('server', self.michiru_server_tag)
                                                                       .and_('channel', chan)
