@@ -111,8 +111,8 @@ def rmadmin(bot, server, target, source, message, parsed, private):
 
 ## Module commands.
 
-@command(r'enable (\S+)(?: (\S+)(?: (\S+))?)?')
-@command(r'enable (\S+)(?: on (\S+)(?:, channel (\S+))?)?\.?$')
+@command(r'enable (\S+)(?: (\S+)(?: (\S+))?)?\.?$')
+@command(r'enable (\S+) on (\S+)(?:, channel (\S+))?\.?$')
 @restricted
 def enable(bot, server, target, source, message, parsed, private):
     module = parsed.group(1)
@@ -181,6 +181,10 @@ def reload(bot, server, target, source, message, parsed, private):
     module = parsed.group(1)
     modules.load(module, reload=True)
     bot.privmsg(target, _('Module {mod} reloaded.', mod=module))
+
+@command(r'loaded')
+def loaded(bot, server, target, source, message, parsed, private):
+    bot.privmsg(target, _('Loaded modules: {mods}', mods=', '.join(modules.modules.keys()))) 
 
 
 ## Join/part servers/channels.
@@ -345,7 +349,15 @@ def setraw(bot, server, target, source, message, parsed, private):
 @command(r'get (\S+)')
 @command(r'what\'s the value of (\S+)\??$')
 @restricted
-def set(bot, server, target, source, message, parsed, private):
+def get(bot, server, target, source, message, parsed, private):
+    name = parsed.group(1)
+    val = config.current[name]
+    bot.privmsg(target, _('config[\'{name}\']: {val}.', name=name, val=val))
+
+@command(r'getraw (\S+)')
+@command(r'what\'s the raw value of (\S+)\??$')
+@restricted
+def getraw(bot, server, target, source, message, parsed, private):
     name = parsed.group(1)
     val = eval('repr(config.current{})'.format(name))
     bot.privmsg(target, _('config{name}: {val}.', name=name, val=val))
