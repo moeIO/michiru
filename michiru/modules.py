@@ -217,6 +217,12 @@ def load(name, soft=True, reload=False):
     except Exception as e:
         del modules[name]
         raise EnvironmentError(_('Error while loading module {mod}: {err}', mod=name, err=e))
+
+    # And add to config.
+    if name not in config.current['modules']:
+        config.current['modules'].append(name)
+
+    # And to the dict.
     modules[name] = module, True, enabled
 
 def unload(name, soft=True):
@@ -242,9 +248,11 @@ def unload(name, soft=True):
         if soft:
             raise EnvironmentError(_('Error while unloading module {mod}: {err}', mod=name, err=e))
     
-    # Delete module from dict if we're doing a hard unload.
+    # Delete module from dict and config if we're doing a hard unload.
     if not soft:
         del modules[name]
+        if name in config.current['modules']:
+            config.current['modules'].remove(name)
 
 def unload_all(soft=True):
     """ Unload all modules. """
