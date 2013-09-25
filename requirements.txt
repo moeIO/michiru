@@ -1,0 +1,4 @@
+distribute==0.6.34
+-e git+https://github.com/Shizmob/lurklib@53094a29fb0704a0b16d086ae26fb73117333a2d#egg=lurklib-dev
+urbandict==0.2
+wolframalpha==1.0.2
