@@ -327,6 +327,7 @@ def loadconf(bot, server, target, source, message, parsed, private):
 
 @command(r'saveconf')
 @command(r'save (?:your |the )?configuration\.?$')
+@command(r'b(?:-b)*ack that shit up\.?')
 @restricted
 def saveconf(bot, server, target, source, message, parsed, private):
     config.save()
@@ -341,6 +342,7 @@ def set(bot, server, target, source, message, parsed, private):
 
 @command(r'setraw (\S+) (.+)')
 @command(r'set (\S+) raw to (.+)\.?$')
+@restricted
 def setraw(bot, server, target, source, message, parsed, private):
     name, value = parsed.group(1, 2)
     exec('config.current{name} = {val}'.format(name=name, val=value))
