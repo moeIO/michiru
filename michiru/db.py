@@ -3,6 +3,7 @@
 import time
 import datetime
 import sqlite3
+import threading
 
 import version as michiru
 import config
@@ -30,6 +31,7 @@ DATE_FORMAT = '%Y-%m-%d'
 TIME_FORMAT = '%H:%M:%S'
 
 handle = None
+mutex = threading.RLock()
 
 config.ensure_file(DB_FILE, writable=True)
 
@@ -81,7 +83,7 @@ def connect():
     """ Connect to the database. """
     global handle
 
-    handle = sqlite3.connect(config.filename(DB_FILE, writable=True))
+    handle = sqlite3.connect(config.filename(DB_FILE, writable=True), check_same_thread=False)
     handle.row_factory = sqlite3.Row
 
 def disconnect():
@@ -133,6 +135,8 @@ class Query:
 
     def get(self, *fields):
         """ Perform data retrieval query for `fields`. """
+        global mutex
+
         # Build query.
         query  = 'SELECT {fields} FROM `{table}`'.format(fields='`' + '`, `'.join(fields) + '`' if fields else '*', table=self.table)
 
@@ -156,9 +160,14 @@ class Query:
         if self.limit_ is not None:
             query += ' LIMIT ' + str(self.limit_)
 
+        # Perform query.
+        mutex.acquire()
         cursor = self.handle.cursor()
         cursor.execute(query, tuple(vals))
-        return cursor.fetchall()
+        data = cursor.fetchall()
+        mutex.release()
+
+        return data
     
     def single(self, *fields):
         """ Perform data retrieval query for `fields` and return single row, or None. """
@@ -169,17 +178,26 @@ class Query:
 
     def add(self, values):
         """ Perform data insertion query. """
+        global mutex
+
         # Build query, nothing particularly special.
         query = 'INSERT INTO `{table}` '.format(table=self.table)
         query += '(`' + '`, `'.join(values.keys()) + '`) '
         query += 'VALUES (' + ', '.join(['?'] * len(values.keys())) + ')'
 
+        # Execute query.
+        mutex.acquire()
         cursor = self.handle.cursor()
         cursor.execute(query, tuple(val2db(x) for x in values.values()))
         self.handle.commit()
+        mutex.release()
+
+        # Return inserted ID.
+        return cursor.lastrowid
 
     def delete(self):
         """ Perform data removal query. """
+        global mutex
         query = 'DELETE FROM `{table}`'.format(table=self.table)
 
         # Build where.
@@ -196,9 +214,11 @@ class Query:
             query += ' '.join(constraint_statements)
 
         # Execute.
+        mutex.acquire()
         cursor = self.handle.cursor()
         cursor.execute(query, tuple(vals))
         self.handle.commit()
+        mutex.release()
 
 def on(table):
     """ Start a query on given data. """
@@ -217,6 +237,20 @@ def to(table):
     """ Start a query on given data. """
     return on(table)
 
+def query(table, query, *vals):
+    """ Perform a raw query on data. """
+    global handle, mutex
+
+    # Perform query, commit results, receive data.
+    mutex.acquire()
+    cursor = handle.cursor()
+    cursor.execute(query, tuple(vals))
+    data = cursur.fetchall()
+    cursor.commit()
+    mutex.release()
+
+    return data
+    
 
 def val2db(val, raw=True):
     """
