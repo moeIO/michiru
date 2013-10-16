@@ -37,18 +37,18 @@ IRC_CODES = {
 
 messages_ = {}
 
-def localize(msg, *args, **kwargs):
+def localize(_msg, *args, **kwargs):
     """ Localize message to current personality, if it supports it. """
     global IRC_CODES, messages
 
     # Find personality and check if personality has an alternative for message.
     personality = config.current['personality']
-    if personality and personality in messages_ and msg in messages_[personality]:
+    if personality and personality in messages_ and _msg in messages_[personality]:
         # Replace message.
-        msg = messages_[personality][msg]
+        _msg = messages_[personality][_msg]
 
     kwargs.update(IRC_CODES)
-    return msg.format(*args, **kwargs)
+    return _msg.format(*args, **kwargs)
 
 def message(personality, original, tl):
     """ Register alternative message for `personality` for message `original`. """
