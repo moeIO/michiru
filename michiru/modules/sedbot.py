@@ -11,7 +11,8 @@ __name__ = 'sedbot'
 __author__ = 'Shiz'
 __license__ = 'WTFPL'
 
-config.ensure('sedbot.log_limit', 5)
+config.ensure('sedbot_verbose_errors', False)
+config.ensure('sedbot_log_limit', 5)
 last_messages = {}
 
 
@@ -29,7 +30,8 @@ def sed(bot, server, target, source, message, matched, private):
 
     # Do we have anything on the source?
     if not (server, target, targ) in last_messages.keys():
-        #raise EnvironmentError(_('No messages to match.'))
+        if config.current['sedbot_verbose_errors']:
+            raise EnvironmentError(_('No messages to match.'))
         return
 
     # Generate flags.
@@ -39,15 +41,21 @@ def sed(bot, server, target, source, message, matched, private):
     if 's' in flags:
         re_flags |= re.DOTALL
 
+    # Remove escaped delimiters.
+    pattern = pattern.replace('\\' + delimiter, delimiter)
+    replacement = replacement.replace('\\' + delimiter, delimiter)
+
     # Compile regexp.
     try:
-        expr = re.compile(pattern.replace('\\' + delimiter, delimiter), re_flags)
+        expr = re.compile(pattern, re_flags)
         if not expr:
-            #raise ValueError(_('Invalid regular expression.'))
+            if config.current['sedbot_verbose_errors']:
+                raise ValueError(_('Invalid regular expression.'))
             return
     except:
         # Not a valid regexp.
-        #raise ValueError(_('Invalid regular expression.'))
+        if config.current['sedbot_verbose_errors']:
+            raise ValueError(_('Invalid regular expression.'))
         return
 
     # Start matching.
@@ -63,7 +71,8 @@ def sed(bot, server, target, source, message, matched, private):
 
     # No message matched?
     if not msg:
-        #raise ValueError(_('Could not find matching message.'))
+        if config.current['sedbot_verbose_errors']:
+            raise ValueError(_('Could not find matching message.'))
         return
 
     bot.privmsg(target, _('<{nick}> {ftfy}', nick=targ, ftfy=msg, diff=len(msg) - len(matched_message)))
