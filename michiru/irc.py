@@ -261,7 +261,7 @@ class IRCBot(lurklib.Client):
                     try:
                         cmd(self, server, channel, source, message, matched_message, private=private)
                     except Exception as e:
-                        self.notice(channel, _('Error while executing [{mod}:{cmd}]: {err}', mod=module, cmd=cmd.__name__, err=e))
+                        self.notice(source[0], _('Error while executing [{mod}:{cmd}]: {err}', mod=module, cmd=cmd.__name__, err=e))
                         traceback.print_exc()
             elif matched_nick:
                 matched_message = matcher.match(parsed_message)
@@ -270,7 +270,7 @@ class IRCBot(lurklib.Client):
                     try:
                         cmd(self, server, channel, source, parsed_message, matched_message, private=private)
                     except Exception as e:
-                        self.notice(channel, _('Error while executing [{mod}:{cmd}]: {err}', mod=module, cmd=cmd.__name__, err=e))
+                        self.notice(source[0], _('Error while executing [{mod}:{cmd}]: {err}', mod=module, cmd=cmd.__name__, err=e))
                         traceback.print_exc()
 
         # And execute hooks.
