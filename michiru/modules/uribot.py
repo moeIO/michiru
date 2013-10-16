@@ -19,7 +19,7 @@ URI_REGEXP = re.compile(r"""(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-
 
 # URI handlers.
 
-def uri_title(uri, contents):
+def uri_title(contents, matches):
     """ Extract a regular URL title. """
     html = bs4.BeautifulSoup(contents)
 
@@ -28,7 +28,7 @@ def uri_title(uri, contents):
         return None
     return 'Title', html.title.string, ''
 
-def uri_youtube(uri, contents):
+def uri_youtube(contents, matches):
     """ Extract YouTube video information. """
     xml = bs4.BeautifulSoup(contents)
 
@@ -61,11 +61,20 @@ def uri_youtube(uri, contents):
 
     return type, title, meta
 
-def uri_reddit(uri, contents):
+def uri_reddit(contents, matches):
     """ Extract Reddit thread information. """
-    pass
+    thread = json.loads(contents)
+    # Do we want the OP or a specific reply?
+    wanted = matches.group(3)
 
-def uri_twitter(uri, contents):
+    # Gather some metadata.
+    subreddit = matches.group(2)
+
+
+    type = 'Reddit: /r/{}'.format(subreddit)
+
+
+def uri_twitter(contents, matches):
     """ Extract Twitter status information. """
     html = bs4.BeautifulSoup(contents)
 
@@ -96,20 +105,15 @@ def uri_twitter(uri, contents):
 
     return 'Twitter: {}'.format(user), tweet, ', '.join(meta)
 
-def uri_4chan(uri, contents):
+def uri_4chan(contents, matches):
     """ Extract 4chan thread information. """
     thread = json.loads(contents)
     wanted = None
 
     # Check if we want to actually have a linked post instead of the OP.
-    uri_parts = uri.split('#', 1)
-    if len(uri_parts) > 1:
-        uri, segment = uri_parts
-        if segment.startswith('p'):
-            segment = segment[1:]
-
+    if matches.group(3):
         try:
-            wanted = int(segment)
+            wanted = int(matches.group(3))
         except:
             pass
 
@@ -145,7 +149,7 @@ def uri_4chan(uri, contents):
             title = re.sub('\s+', ' ', title)
 
     # Gather some metadata.
-    board = re.match(r'https?://boards\.4chan\.org/([a-z0-9]+)/', uri).group(1)
+    board = matches.group(1)
     num_replies = thread['posts'][0]['replies']
     num_images = thread['posts'][0]['images']
 
@@ -164,35 +168,39 @@ URI_HANDLERS = {
     r'^https?://(?:www\.)youtube\.com/watch\?(?:\S*)v=([a-zA-Z0-9_-]+)(?:[&#]\S*)?$':
         (uri_youtube, r'https://gdata.youtube.com/feeds/api/videos/\1'),
     # Reddit post/comment.
-    r'^(https?://(?:.*?\.){0,1}reddit\.com/r/([a-zA-Z0-9_-]+)/comments/([a-zA-Z0-9_-]+)(/([a-zA-Z0-9_-]*))?/?)(?:[?&#]\S*)?$':
+    r'^(https?://(?:.*?\.){0,1}reddit\.com/r/([a-zA-Z0-9_-]+)/comments/([a-zA-Z0-9_-]+)(/([a-zA-Z0-9_-]+))?/?)(?:[?&#]\S*)?$':
         (uri_reddit, '\1.json'),
     # Twitter status.
     r'^https?://(?:www\.){0,1}twitter\.com/([a-zA-Z0-9_-]+)/status/([0-9]+)(?:[?#&]\S*)?$':
         (uri_twitter, None),
     # 4chan thread/post.
-    r'^https?://boards\.4chan\.org/([a-z0-9]+)/res/([0-9]+)(?:[?&#]\S*)?$': 
+    r'^https?://boards\.4chan\.org/([a-z0-9]+)/res/([0-9]+)(?:#p?([0-9]+))?$': 
         (uri_4chan, r'https://api.4chan.org/\1/res/\2.json')
 }
 
 
 # Commands.
 
-@command(r'(?:^|\s)https?://', bare=True)
+@command(r'(?:^|.*\s)https?://', bare=True)
 def uri(bot, server, target, source, message, parsed, private):
     global URI_REGEXP, URI_HANDLERS
     
     # Find all URIs and process them.
     for match in re.findall(URI_REGEXP, message):
-        original_uri = uri = match[0]
+        uri = match[0]
+        matches = None
 
         # Stock handler: extract the URI.
         handler = uri_title
         # See if we want a custom handler.
         for matcher, (hndlr, replacement) in URI_HANDLERS.items():
-            if matcher.match(uri):
+            matches = matcher.match(uri)
+
+            if matches:
                 if replacement:
                     uri = matcher.sub(replacement, uri)
                 handler = hndlr
+                break
 
         # Do request.
         try:
@@ -203,7 +211,7 @@ def uri(bot, server, target, source, message, parsed, private):
             continue
 
         # Parse response.
-        res = handler(original_uri, response.text)
+        res = handler(response.text, matches)
         if not res:
             continue
         type, title, meta = res
