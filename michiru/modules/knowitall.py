@@ -50,7 +50,7 @@ def get_definition(wanted, sources=['urbandictionary', 'wolframalpha'], server=N
     if 'urbandictionary' in sources:
         udres = urbandict.define(wanted)
         if udres:
-            definition = udres[0]['def']
+            definition = udres['definitions'][0]['definition']
             # Remove annoying formatting we can't do anything with.
             definition = re.sub(r'\[(.+?)\](.+?)\[\/\1\]', r'\2', definition)
             definition = re.sub(r'\[(.+?)\]', r'\1', definition)
