@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 # Michiru's core module.
+import os
+import sys
+import io
+
 import config
 import db
 import irc
@@ -297,6 +301,7 @@ def ignore(bot, server, target, source, message, parsed, private):
 
 @command(r'unignore (\S+)(?: (#\S+|everywhere))?')
 @command(r'stop ignoring (\S+)(?: (?:on (\S+)|(everywhere))?)?\.?')
+@restricted
 def unignore(bot, server, target, source, message, parsed, private):
     nick = parsed.group(1)
     chan = parsed.group(2)
@@ -337,35 +342,90 @@ def saveconf(bot, server, target, source, message, parsed, private):
 @restricted
 def set(bot, server, target, source, message, parsed, private):
     name, value = parsed.group(1, 2)
-    config.current[name] = eval(value)
+    value = eval(value)
+
+    config.set(name, value, server, target)
     bot.privmsg(target, _('Configuration item {name} set.', name=name))
 
-@command(r'setraw (\S+) (.+)')
-@command(r'set (\S+) raw to (.+)\.?$')
+@command(r'add (\S+)(?: to)? (.+)\.?$')
 @restricted
-def setraw(bot, server, target, source, message, parsed, private):
-    name, value = parsed.group(1, 2)
-    exec('config.current{name} = {val}'.format(name=name, val=value))
-    bot.privmsg(target, _('Configuration item {name} set.', name=name))
+def add(bot, server, target, source, message, parsed, private):
+    value, name = parsed.group(1, 2)
+    value = eval(value)
+
+    config.add(name, value, server, target)
+    bot.privmsg(target, _('Added value to configuration item {name}.', name=name))
+
+@command('setdict (\S+) (\S+) (.+)\.?$')
+@restricted
+def setdict(bot, server, target, source, message, parsed, private):
+    item, key, value = parsed.group(1, 2, 3)
+    value = eval(value)
+
+    config.setdict(item, name, value, server, target)
+    bot.privmsg(target, _('Set key in configuration item {name}.', name=name))
 
 @command(r'get (\S+)')
 @command(r'what\'s the value of (\S+)\??$')
 @restricted
 def get(bot, server, target, source, message, parsed, private):
     name = parsed.group(1)
-    val = config.current[name]
+    val = config.get(name, server, target)
     bot.privmsg(target, _('config[\'{name}\']: {val}.', name=name, val=val))
 
-@command(r'getraw (\S+)')
-@command(r'what\'s the raw value of (\S+)\??$')
+@command(r'list (\S+)\.?')
 @restricted
-def getraw(bot, server, target, source, message, parsed, private):
+def list_(bot, server, target, source, message, parsed, private):
     name = parsed.group(1)
-    val = eval('repr(config.current{})'.format(name))
-    bot.privmsg(target, _('config{name}: {val}.', name=name, val=val))
+    val = config.getlist(name, server, target)
+    bot.privmsg(target, _('config[\'{name}\']: {val}.', name=name, val=', '.join(val)))
+
+@command(r'getdict (\S+)')
+@restricted
+def getdict(bot, server, target, source, message, parsed, private):
+    name = parsed.group(1)
+    val = config.getdict(name, server, target)
+    bot.privmsg(target, _('config[\'{name}\']: {val}.', name=name, val=val))
 
 
 ## Misc commands.
+
+@command(r'eval (.*)$')
+@command(r'evaluate (.*)$')
+@restricted
+def evaluate(bot, server, target, source, message, parsed, private):
+    code = parsed.group(1)
+
+    # Capture output.
+    resio = io.StringIO()
+    sys.stdout = resio
+    sys.stderr = resio
+
+    res = None
+    try:
+        res = eval(code)
+    except SyntaxError:
+        exec(code)
+
+    # Restore output.
+    sys.stdout = sys.__stdout__
+    sys.stderr = sys.__stderr__
+
+    # Format output.
+    resio = resio.getvalue()
+    if res:
+        if resio:
+            res = repr(res) + '\n' + resio
+        else:
+            res = repr(res)
+    else:
+        res = resio
+    
+    # Only output if we have something relevant to.
+    res = res.strip()
+    if res:
+        res = res.replace('\n', ' - ')
+        bot.privmsg(target, res)
 
 @command(r'nick (\S+)')
 @command(r'change nick(?:name)? to (\S+)\.?$')
@@ -383,11 +443,45 @@ def help(bot, server, target, source, message, parsed, private):
 def error(bot, server, target, source, message, parsed, private):
     raise ValueError(parsed.group(1))
 
+@command(r'source')
+@command(r'where (?:is|can I find) your source(?: code)?\??')
+def source(bot, server, target, source, message, parsed, private):
+    bot.privmsg(target, _('My source is at {src}.', src=version.__source__))
+
 @command(r'version')
 @command(r'what are you\??$')
 def version_(bot, server, target, source, message, parsed, private):
-    bot.privmsg(target, 'This is {n} v{v}, ready to serve.'.format(n=version.__name__, v=version.__version__))
+    bot.privmsg(target, _('This is {n} v{v}, ready to serve.', n=version.__name__, v=version.__version__))
 
+
+@command(r'stats')
+@command(r'(?:what(?: kind of)?|how many) resources are you using\??')
+def stats(bot, server, target, source, message, parsed, private):
+    try:
+        import psutil
+    except:
+        raise EnvironmentError(_('"psutil" module not found.'))
+
+    # Helper function. Turn amount into readable string including SI prefix.
+    def si_ify(bytes):
+        orders = [ 'k', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y' ]
+        for i, order in enumerate(reversed(orders)):
+            base = 2**(10*(len(orders)-i))
+            if bytes > base:
+                n = bytes / base
+                return '{n}{u}iB'.format(n=round(n, 2), u=order)
+
+        return '{n}B'.format(n=bytes)
+
+    # And dump info.
+    proc = psutil.Process(os.getpid())
+    bot.privmsg(target, _('I use: CPU: {cpuperc}%; RAM: {ramused}/{ramtotal} ({ramperc}%); Threads: {threadcount}; Connections: {conncount}',
+        cpuperc=round(proc.get_cpu_percent(), 2),
+        ramused=si_ify(proc.get_memory_info()[0]),
+        ramtotal=si_ify(psutil.virtual_memory().total),
+        ramperc=round(proc.get_memory_percent(), 2),
+        threadcount=proc.get_num_threads(),
+        conncount=len(proc.get_connections('inet'))))
 
 def load():
     return True

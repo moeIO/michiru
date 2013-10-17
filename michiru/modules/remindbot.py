@@ -24,7 +24,7 @@ db.ensure('reminders', {
 })
 
 
-@command(r'remind (\S+)(?: in (.*?))? (?:that|to) (.*)$')
+@command(r'(?:remind|tell) (\S+)(?: in (.*?))? (?:that|to) (.*)$')
 def remind(bot, server, target, source, message, parsed, private):
     targ = parsed.group(1)
     msg = parsed.group(3)

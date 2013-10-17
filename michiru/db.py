@@ -10,7 +10,7 @@ import config
 
 config.ensure('db_file', 'db.sqlite3')
 
-DB_FILE = config.current['db_file']
+DB_FILE = config.get('db_file')
 # SQLite 3 data definitions for abstraction.
 INT = 'integer'
 UINT = 'unsigned integer'

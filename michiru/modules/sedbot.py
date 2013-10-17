@@ -30,7 +30,7 @@ def sed(bot, server, target, source, message, matched, private):
 
     # Do we have anything on the source?
     if not (server, target, targ) in last_messages.keys():
-        if config.current['sedbot_verbose_errors']:
+        if config.get('sedbot_verbose_errors', server, target):
             raise EnvironmentError(_('No messages to match.'))
         return
 
@@ -49,12 +49,12 @@ def sed(bot, server, target, source, message, matched, private):
     try:
         expr = re.compile(pattern, re_flags)
         if not expr:
-            if config.current['sedbot_verbose_errors']:
+            if config.get('sedbot_verbose_errors', server, target):
                 raise ValueError(_('Invalid regular expression.'))
             return
     except:
         # Not a valid regexp.
-        if config.current['sedbot_verbose_errors']:
+        if config.get('sedbot_verbose_errors', server, target):
             raise ValueError(_('Invalid regular expression.'))
         return
 
@@ -71,7 +71,7 @@ def sed(bot, server, target, source, message, matched, private):
 
     # No message matched?
     if not msg:
-        if config.current['sedbot_verbose_errors']:
+        if config.get('sedbot_verbose_errors', server, target):
             raise ValueError(_('Could not find matching message.'))
         return
 
@@ -89,7 +89,7 @@ def log(bot, server, target, who, message, private):
     last_messages[server, target, who[0]].append(message)
 
     # Prune.
-    while len(last_messages[server, target, who[0]]) > config.current['sedbot.log_limit']:
+    while len(last_messages[server, target, who[0]]) > config.get('sedbot_log_limit', server, target):
         last_messages[server, target, who[0]].pop(0)
 
 

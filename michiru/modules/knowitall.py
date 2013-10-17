@@ -32,17 +32,17 @@ def whatis(bot, server, target, source, message, parsed, private):
         bot.privmsg(target, _('You.'))
         return
     
-    definition = get_definition(wanted)
+    definition = get_definition(wanted, server=server, channel=target)
     bot.privmsg(target, definition)
 
 @command('calculate (.+)')
 def calculate(bot, server, target, source, message, parsed, private):
     wanted = parsed.group(1).strip()
-    definition = get_definition(wanted, sources=['wolframalpha'])
+    definition = get_definition(wanted, sources=['wolframalpha'], server=server, channel=target)
     bot.privmsg(target, definition)
 
 
-def get_definition(wanted, sources=['urbandictionary', 'wolframalpha']):
+def get_definition(wanted, sources=['urbandictionary', 'wolframalpha'], server=None, channel=None):
     """ Try to define something through several sources. """
     definition = None
 
@@ -59,27 +59,31 @@ def get_definition(wanted, sources=['urbandictionary', 'wolframalpha']):
 
     # WolframAlpha for scientific inquiries and the like.
     if not definition and 'wolframalpha' in sources:
-        client = wolframalpha.Client(config.current['knowitall_wolfram_api_key'])
+        client = wolframalpha.Client(config.get('knowitall_wolfram_api_key', server, channel))
         wares = client.query(wanted)
 
-        wadef = []
+        wadefs = []
         for pod in wares.pods:
+            if pod.title == 'Input interpretation':
+                continue
+
             text = pod.text
             if text:
                 if pod.title and pod.title != 'Result' and pod.title != 'Input interpretation':
                     text = '{b}[{title}]{/b} '.format(title=pod.title, **personalities.IRC_CODES) + text
                 text = text.strip()
-                # Reorder formatting a bit.
+                # Reorder formatting a bit. WolframAlpha uses \:<unicode code> to represent unicode characters.
                 text = text.replace('\n', ' - ')
                 text = text.replace(' | ', ': ')
+                text = re.sub('(\\:[a-z0-9]+)', lambda x: chr(int(x.group(1)[2:])), text)
                 text = re.sub(r' - \(as seen by .+?\)', '', text)
                 text = re.sub(r' - \(according to .+?\)', '', text)
                 text = re.sub(r' - \(', ' (', text)
                 text = re.sub(r'\s+', ' ', text)
-                wadef.append(text)
+                wadefs.append(text)
 
-        if wadef:
-            definition = ' | '.join(wadef)
+        if wadefs:
+            definition = ' | '.join(wadefs)
 
     # Dummy texts.
     if not definition:

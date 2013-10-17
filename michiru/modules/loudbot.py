@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 # Loudbot module.
 from datetime import datetime
+import random
 
+import config
 import db
 import personalities
 from modules import command
@@ -10,6 +12,9 @@ _ = personalities.localize
 __name__ = 'loudbot'
 __author__ = 'Shiz'
 __license__ = 'WTFPL'
+
+config.ensure('loudbot_cutoff_length', 8)
+config.ensure('loudbot_response_chance', 0.2)
 
 db.ensure('shouts', {
     'id': db.ID,
@@ -45,24 +50,30 @@ personalities.messages('tsun', {
 
 last_shouts = {}
 
-@command('([^a-z]{8,})', case_sensitive=True, bare=True)
+@command('([^a-z]+)$', case_sensitive=True, bare=True)
 def shout(bot, server, target, source, message, parsed, private):
     global last_shouts
     shout = parsed.group(1)
 
-    # Fetch random shout.
-    to_shout = db.from_('shouts').where('server', server).and_('channel', target) \
-                                 .random().limit(1).single('id', 'shout')
+    # Don't record shouts that are too short.
+    if len(shout) < config.get('loudbot_cutoff_length'):
+        return
 
-    if to_shout:
-        id, to_shout = to_shout
-        to_shout = to_shout.decode('utf-8')
+    # Respond with another shout.
+    if random.random() <= config.get('loudbot_response_chance'):
+        # Fetch random shout.
+        to_shout = db.from_('shouts').where('server', server).and_('channel', target) \
+                                     .random().limit(1).single('id', 'shout')
 
-        # Store shout ID in case someone wants info on it.
-        last_shouts[server, target] = id
+        if to_shout:
+            id, to_shout = to_shout
+            to_shout = to_shout.decode('utf-8')
 
-        # Shout it.
-        bot.privmsg(target, to_shout)
+            # Store shout ID in case someone wants info on it.
+            last_shouts[server, target] = id
+
+            # Shout it.
+            bot.privmsg(target, to_shout)
 
     # Add shout to database.
     db.to('shouts').add({

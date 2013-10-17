@@ -42,13 +42,13 @@ class IRCBot(lurklib.Client):
     def __init__(self, tag, *args, **kwargs):
         super(lurklib.Client, self).__init__(*args, **kwargs)
         self.michiru_server_tag = tag
-        self.michiru_config = config.current['servers'][self.michiru_server_tag]
+        self.michiru_config = config.get('servers')[self.michiru_server_tag]
         self.michiru_history = {}
         self.michiru_ignores = []
         # Compile regexp we'll use to see if messages are intended for us.
         self.michiru_message_pattern = re.compile('(?:{nick}[:,;]\s*|{prefixes})(.+)'.format(
             nick=self.current_nick,
-            prefixes='[{chars}]'.format(chars=''.join(re.escape(x) for x in config.current['command_prefixes']))
+            prefixes='[{chars}]'.format(chars=''.join(re.escape(x) for x in config.get('command_prefixes', server=self.michiru_server_tag)))
         ), re.IGNORECASE)
 
         # Fill ignore list from database.
@@ -99,7 +99,7 @@ class IRCBot(lurklib.Client):
         # Remove ignore.
         db.from_('_ignores').where('nickname', who) \
                             .and_('server', self.michiru_server_tag) \
-                            .and_('channel', channel).delete()
+                            .and_('channel', chan).delete()
 
     def ignored(self, who, chan=None):
         """ Check if user is ignored. """
@@ -307,7 +307,7 @@ def setup():
     """ Setup the bots. """
     global bots
 
-    for tag, info in config.current['servers'].items():
+    for tag, info in config.get('servers').items():
         # Create bot.
         bots[tag] = IRCBot(
             tag,
@@ -333,18 +333,16 @@ def main_loop():
     global bots
 
     while bots:
+        for tag, bot in bots.items():
+            # Run connect handler if we need to.
+            if bot.on_connect and not bot.readable(2):
+                bot.on_connect()
+                bot.on_connect = None
+
         # Make a copy of the bot values so we can change them.
+        IRCBot.process_multiple(*bots.values(), timeout=1)
+
         for tag, bot in list(bots.items()):
             # No point in keeping it if it doesn't wanna.
             if not bot.keep_going:
                 del bots[tag]
-
-            # DANGEROUS ZONE.
-            with bot.lock:
-                # Run connect handler if we need to.
-                if bot.on_connect and not bot.readable(2):
-                    bot.on_connect()
-                    bot.on_connect = None
-                if bot.keep_going:
-                    bot.process_once()
-

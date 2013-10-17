@@ -4,7 +4,9 @@ import re
 import requests
 import bs4
 import json
+import urllib.parse
 
+import config
 import personalities
 from modules import command
 _ = personalities.localize
@@ -12,6 +14,9 @@ _ = personalities.localize
 __name__ = 'uribot'
 __author__ = 'Shiz'
 __license__ = 'WTFPL'
+
+config.ensure('uribot_use_whitelist', False)
+config.ensure('uribot_whitelist', [])
 
 # Thanks Hitler, Obama and Daring Fireball.
 URI_REGEXP = re.compile(r"""(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))""")
@@ -26,7 +31,7 @@ def uri_title(contents, matches):
     # Very basic stuff, thanks to BeautifulSoup.
     if not html.title:
         return None
-    return 'Title', html.title.string, ''
+    return 'Title', html.title.string.strip(), ''
 
 def uri_youtube(contents, matches):
     """ Extract YouTube video information. """
@@ -189,6 +194,18 @@ def uri(bot, server, target, source, message, parsed, private):
     for match in re.findall(URI_REGEXP, message):
         uri = match[0]
         matches = None
+
+        # Use whitelist if we have to.
+        if config.get('uribot_use_whitelist', server, target):
+            components = urllib.parse.urlparse(uri)
+            host = components.netloc.split(':', 1)[0]
+
+            # Verify against whitelist.
+            for h in config.getlist('uribot_whitelist', server, target):
+                if host.endswith(h):
+                    break
+            else:
+                continue
 
         # Stock handler: extract the URI.
         handler = uri_title

@@ -48,6 +48,94 @@ else:
     raise EnvironmentError('Unknown platform!')
 
 
+
+def get(item, server=None, channel=None):
+    global current
+
+    if server and channel and (server, channel) in current['_overrides'] and item in current['_overrides'][server, channel]:
+        return current['_overrides'][server, channel][item]
+    elif server and server in current['_overrides'] and item in current['_overrides'][server]:
+        return current['_overrides'][server][item]
+    return current[item]
+
+def getlist(item, server=None, channel=None):
+    global current
+    res = []
+
+    if item in current:
+        res.extend(current[item])
+    if server and server in current['_overrides'] and item in current['_overrides'][server]:
+        res.extend(current['_overrides'][server][item])
+    if server and channel and (server, channel) in current['_overrides'] and item in current['_overrides'][server, channel]:
+        res.extend(current['_overrides'][server, channel][item])
+    return res
+
+def getdict(item, server=None, channel=None):
+    global current
+    res = {}
+
+    if item in current:
+        res.update(current[item])
+    if server and server in current['_overrides'] and item in current['_overrides'][server]:
+        res.update(current['_overrides'][server][item])
+    if server and channel and (server, channel) in current['_overrides'] and item in current['_overrides'][server, channel]:
+        res.update(current['_overrides'][server, channel][item])
+    return res
+
+def set(item, value, server=None, channel=None):
+    global current
+
+    if server:
+        if channel:
+            v = server, channel
+        else:
+            v = server
+
+        if v not in current['_overrides']:
+            current['_overrides'][v] = {}
+        current['_overrides'][v][item] = value
+    else:
+        current[item] = value
+
+def add(item, value, server=None, channel=None):
+    global current
+
+    if server:
+        if channel:
+            v = server, channel
+        else:
+            v = server
+
+        if v not in current['_overrides']:
+            current['_overrides'][v] = {}
+        if item not in current['_overrides'][v]:
+            current['_overrides'][v][item] = []
+        current['_overrides'][v][item].append(value)
+    else:
+        if item not in current:
+            current[item] = []
+        current[item].append(value)
+
+def setdict(item, key, value, server=None, channel=None):
+    global current
+
+    if server:
+        if channel:
+            v = server, channel
+        else:
+            v = server
+
+        if v not in current['_overrides']:
+            current['_overrides'][v] = {}
+        if item not in current['_overrides'][v]:
+            current['_overrides'][v][item] = {}
+        current['_overrides'][v][item][key] = value
+    else:
+        if not item not in current:
+            current[item] = {}
+        current[item][key] = value
+
+
 def ensure(item, default):
     """ Ensure configuration item exists. Will initialize it to `default` if it doesn't. """
     global current
@@ -144,8 +232,11 @@ def load():
 
     current = {}
     # Read the file and load its variables up.
-    with open(fn, 'rb') as f:
+    with open(fn, 'rb') as f: 
         exec(f.read(), current, current)
+
+    # Ensure override data exists.
+    ensure('_overrides', {})
 
 def save():
     """ Save configuration to CONFIG_FILE. """

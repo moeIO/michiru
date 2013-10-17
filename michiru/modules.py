@@ -38,7 +38,7 @@ def register_command(name, pattern, cmd, bare=False, case_sensitive=False):
     global commands
 
     # Check if command is already registered.
-    pattern = re.compile(pattern, re.IGNORECASE if not case_sensitive else 0)
+    pattern = re.compile(pattern, re.IGNORECASE | re.UNICODE if not case_sensitive else re.UNICODE)
     if (name, pattern, cmd, bare) in commands:
         raise EnvironmentError(_('Command {cmd} already registered.', cmd=cmd.__qualname__))
 
@@ -49,7 +49,7 @@ def unregister_command(name, pattern, cmd, bare=False, case_sensitive=False):
     global commands
     
     # Check if command is registered.
-    pattern = re.compile(pattern, re.IGNORECASE if not case_sensitive else 0)
+    pattern = re.compile(pattern, re.IGNORECASE | re.UNICODE if not case_sensitive else re.UNICODE)
     if (name, pattern, cmd, bare) not in commands:
         raise EnvironmentError(_('Command {cmd} not registered.', cmd=cmd.__qualname__))
 
@@ -59,20 +59,16 @@ def commands_for(server, channel):
     """ Get all enabled commands for given server and channel. """
     enabledcmds = []
 
+    overrides = config.getdict('modules', server, channel)
     for name, pattern, cmd, bare in commands:
         if not name in modules.keys():
             continue
        
         # Check global flag, configure overrides and per-channel/server overrides.
         module, initialized, enabled = modules[name]
-        if name in config.current['module_overrides']:
-            enabled = config.current['module_overrides'][name]
-        if name in config.current['module_individual_overrides']:
-            overrides = config.current['module_individual_overrides'][name]
-            if server in overrides:
-                enabled = overrides[server]
-            if (server, channel) in overrides:
-                enabled = overrides[server, channel]
+
+        if name in overrides:
+            enabled = overrides[name]
     
         if enabled:
             # Yay, an enabled command.
@@ -85,35 +81,11 @@ def commands_for(server, channel):
 
 def enable(name, server=None, channel=None):
     """ Enable module for given server and/or channel, or globally. """
-    if server:
-        # Set individual override.
-        if channel:
-            val = server, channel
-        else:
-            val = server
-        
-        if not name in config.current['module_individual_overrides']:
-            config.current['module_individual_overrides'][name] = {}
-        config.current['module_individual_overrides'][name][val] = True
-    else:
-        # Set global override.
-        config.current['module_overrides'][name] = True
+    config.setdict('modules', name, True, server, channel)
 
 def disable(name, server=None, channel=None):
     """ Disable module for given server and/or channel, or globally. """
-    if server:
-        # Set individual override.
-        if channel:
-            val = server, channel
-        else:
-            val = server
-
-        if not name in config.current['module_individual_overrides']:
-            config.current['module_individual_overrides'][name] = {}
-        config.current['module_individual_overrides'][name][val] = False
-    else:
-        # Set global override.
-        config.current['module_overrides'][name] = False
+    config.setdict('modules', name, False, server, channel)
 
 
 ## Decorators.
@@ -219,8 +191,8 @@ def load(name, soft=True, reload=False):
         raise EnvironmentError(_('Error while loading module {mod}: {err}', mod=name, err=e))
 
     # And add to config.
-    if name not in config.current['modules']:
-        config.current['modules'].append(name)
+    #if name not in config.getlist('modules'):
+    #    config.add('modules', name)
 
     # And to the dict.
     modules[name] = module, True, enabled
@@ -251,8 +223,8 @@ def unload(name, soft=True):
     # Delete module from dict and config if we're doing a hard unload.
     if not soft:
         del modules[name]
-        if name in config.current['modules']:
-            config.current['modules'].remove(name)
+        if name in config.getlist('modules'):
+            config.remove('modules', name)
 
 def unload_all(soft=True):
     """ Unload all modules. """
@@ -260,4 +232,4 @@ def unload_all(soft=True):
 
     for name, (module, initialized, enabled) in modules.items():
         if not soft or initialized:
-            unload(name)
+            unload(name, soft=soft)
