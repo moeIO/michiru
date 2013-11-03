@@ -11,12 +11,20 @@ import personalities
 from modules import command
 _ = personalities.localize
 
+
+## Module information.
+
 __name__ = 'know-it-all'
 __author__ = 'Shiz'
 __license__ = 'WTFPL'
 
+
+## Configuration.
+
 config.ensure('knowitall_wolfram_api_key', None)
 
+
+## Commands.
 
 @command('(?:what|who|where|how|why)(?: am| is|\'s|are|\'re) (?:an? |the )?(.+)\??$')
 @command('(tell .+)\.?')
@@ -41,6 +49,8 @@ def calculate(bot, server, target, source, message, parsed, private):
     definition = get_definition(wanted, sources=['wolframalpha'], server=server, channel=target)
     bot.privmsg(target, definition)
 
+
+## Utility functions.
 
 def get_definition(wanted, sources=['urbandictionary', 'wolframalpha'], server=None, channel=None):
     """ Try to define something through several sources. """
@@ -97,7 +107,8 @@ def get_definition(wanted, sources=['urbandictionary', 'wolframalpha'], server=N
     return definition
 
 
-# Module stuff.
+## Boilerplate.
+
 def load():
     return True
 
