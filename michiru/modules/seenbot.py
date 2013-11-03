@@ -8,11 +8,15 @@ import personalities
 from modules import command, hook
 _ = personalities.localize
 
+
+## Module information.
 __name__ = 'seenbot'
 __author__ = 'Shiz'
 __license__ = 'WTFPL'
 
-# Database structure.
+
+## Database stuff and constants.
+
 db.ensure('seen', {
     'id': db.ID,
     'server': (db.STRING, db.INDEX),
@@ -21,7 +25,6 @@ db.ensure('seen', {
     'data': db.STRING,
     'time': db.DATETIME
 })
-
 
 # The action values. Fake enum.
 class Actions:
@@ -38,6 +41,7 @@ class Actions:
     CTCP = 0x11
 
 
+## Utility functions.
 
 def timespan(date, current=None, reach=2):
     """ Calculate human readable timespan. """
@@ -85,6 +89,25 @@ def timespan(date, current=None, reach=2):
         message += ' ago'
     return message
 
+def log(server, nick, what, **data):
+    """ Remove earlier entries for `nick` from database and insert new log entry. """
+    db.from_('seen').where('nickname', nick).and_('server', server).delete()
+
+    db.to('seen').add({
+        'server': server,
+        'nickname': nick,
+        'action': what,
+        'data': json.dumps(data),
+        'time': datetime.now()
+    })
+
+def meify(bot, nick):
+    if bot.current_nick == nick:
+        return 'me'
+    return nick
+
+
+## Commands and hooks.
 
 @command(r'seen (\S+)$')
 @command(r'have you seen (\S+)(?: lately)?\??$')
@@ -141,26 +164,6 @@ def seen(bot, server, target, source, message, parsed, private):
     message = _(message, action=submessage, nick=nick, serv=server, rawtime=time, timeago=timespan(time))
     bot.privmsg(target, message)
 
-
-## Hooks.
-def log(server, nick, what, **data):
-    """ Remove earlier entries for `nick` from database and insert new log entry. """
-    db.from_('seen').where('nickname', nick).and_('server', server).delete()
-
-    db.to('seen').add({
-        'server': server,
-        'nickname': nick,
-        'action': what,
-        'data': json.dumps(data),
-        'time': datetime.now()
-    })
-
-def meify(bot, nick):
-    if bot.current_nick == nick:
-        return 'me'
-    return nick
-
-
 @hook('irc.join')
 def join(bot, server, channel, who):
     log(server, who[0], Actions.JOIN, chan=channel)
@@ -202,7 +205,8 @@ def ctcp(bot, server, target, who, message):
     log(server, who[0], Actions.CTCP, target=meify(bot, target[0] if isinstance(target, tuple) else target), message=message)
 
 
-# Module.
+## Boilerplate.
+
 def load():
     return True
 
