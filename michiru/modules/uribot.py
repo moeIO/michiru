@@ -201,7 +201,7 @@ def uri(bot, server, target, source, message, parsed, private):
             host = components.netloc.split(':', 1)[0]
 
             # Verify against whitelist.
-            for h in config.getlist('uribot_whitelist', server, target):
+            for h in config.list('uribot_whitelist', server, target):
                 if host.endswith(h):
                     break
             else:
