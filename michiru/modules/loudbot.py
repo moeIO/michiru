@@ -9,9 +9,14 @@ import personalities
 from modules import command
 _ = personalities.localize
 
+
+## Module information.
 __name__ = 'loudbot'
 __author__ = 'Shiz'
 __license__ = 'WTFPL'
+
+
+## Configuration, database stuff and globals.
 
 config.ensure('loudbot_cutoff_length', 8)
 config.ensure('loudbot_response_chance', 0.2)
@@ -24,6 +29,11 @@ db.ensure('shouts', {
     'shout': db.BINARY,
     'time': db.DATETIME
 })
+
+last_shouts = {}
+
+
+## Personalities.
 
 personalities.messages('fancy', {
     'No last shout for channel {chan} found.':
@@ -48,7 +58,7 @@ personalities.messages('tsun', {
 })
 
 
-last_shouts = {}
+## Commands.
 
 @command('([^a-z]+)$', case_sensitive=True, bare=True)
 def shout(bot, server, target, source, message, parsed, private):
@@ -112,6 +122,9 @@ def who_shouted(bot, server, target, source, message, parsed, private):
         bot.privmsg(target, _('YOU taught me that (don\'t remember? Put down the bong!) on {date}.', date=time))
     else:
         bot.privmsg(target, _('{nick} taught me that on {date}.', nick=shouter, date=time))
+
+
+## Boilerplate.
 
 def load():
     return True
