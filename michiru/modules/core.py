@@ -14,6 +14,14 @@ from modules import command
 _ = personalities.localize
 
 
+## Module information.
+__name__ = 'core'
+__author__ = 'Shiz'
+__license__ = 'WTFPL'
+
+
+## Personality translations.
+
 personalities.messages('fancy', {
     'This command is restricted to administrators.':
         '{b}{msg}{/b} is restricted to administrators.',
@@ -511,6 +519,9 @@ def stats(bot, server, target, source, message, parsed, private):
         ramperc=round(proc.get_memory_percent(), 2),
         threadcount=proc.get_num_threads(),
         conncount=len(proc.get_connections('inet'))))
+
+
+## Boilerplate.
 
 def load():
     return True
