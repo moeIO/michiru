@@ -64,13 +64,9 @@ personalities.messages('tsun', {
 
 ## Helper functions.
 
-def _identified(bot, nick, channel):
-    # LELELELELELE
-    return bot.admin(nick, channel)
-
 def restricted(func):
     def inner(bot, server, target, source, message, parsed, private):
-        if not _identified(bot, source[0], target):
+        if not bot.is_admin(source[0], target):
             raise EnvironmentError(_('This command is restricted to administrators.', cmd=func.__name__))
         else:
             return func(bot, server, target, source, message, parsed, private=private)
@@ -338,55 +334,88 @@ def saveconf(bot, server, target, source, message, parsed, private):
     config.save()
     bot.privmsg(target, _('Configuration saved.'))
 
-@command(r'set (\S+)(?: to)? (.+)\.?$')
+@command(r'set (?:(?:(\S+)\:)?(\S+)\:)?(\S+)(?: to)? (.+)\.?$')
 @restricted
 def set(bot, server, target, source, message, parsed, private):
-    name, value = parsed.group(1, 2)
-    value = eval(value)
+    serv, chan, name, value = parsed.group(1, 2, 3, 4)
 
-    config.set(name, value, server, target)
+    value = eval(value)
+    chan = chan or (None if serv else target)
+    serv = serv or server
+
+    config.set(name, value, serv, chan)
     bot.privmsg(target, _('Configuration item {name} set.', name=name))
 
-@command(r'add (\S+)(?: to)? (.+)\.?$')
+@command(r'add (?:(?:(\S+)\:)?(\S+)\:)?(\S+) (.+)\.?$')
 @restricted
 def add(bot, server, target, source, message, parsed, private):
-    value, name = parsed.group(1, 2)
-    value = eval(value)
+    serv, chan, name, value = parsed.group(1, 2, 3, 4)
 
-    config.add(name, value, server, target)
+    value = eval(value)
+    chan = chan or (None if serv else target)
+    serv = serv or server
+
+    config.add(name, value, serv, chan)
     bot.privmsg(target, _('Added value to configuration item {name}.', name=name))
 
-@command('setdict (\S+) (\S+) (.+)\.?$')
+@command('setdict (?:(?:(\S+)\:)?(\S+)\:)?(\S+) (\S+) (.+)\.?$')
 @restricted
 def setdict(bot, server, target, source, message, parsed, private):
-    item, key, value = parsed.group(1, 2, 3)
-    value = eval(value)
+    serv, chan, item, key, value = parsed.group(1, 2, 3, 4, 5)
 
-    config.setdict(item, name, value, server, target)
+    value = eval(value)
+    chan = chan or (None if serv else target)
+    serv = serv or server
+
+    config.setdict(item, name, value, serv, chan)
     bot.privmsg(target, _('Set key in configuration item {name}.', name=name))
 
-@command(r'get (\S+)')
+@command(r'get (?:(?:(\S+)\:)?(\S+)\:)?(\S+)')
 @command(r'what\'s the value of (\S+)\??$')
 @restricted
 def get(bot, server, target, source, message, parsed, private):
-    name = parsed.group(1)
-    val = config.get(name, server, target)
-    bot.privmsg(target, _('config[\'{name}\']: {val}.', name=name, val=val))
+    serv, chan, name = parsed.group(1, 2, 3)
 
-@command(r'list (\S+)\.?')
+    chan = chan or (None if serv else target)
+    serv = serv or server
+
+    val = config.get(name, serv, chan)
+    bot.privmsg(target, _('{name}: {val}', name=name, val=val))
+
+@command(r'list (?:(?:(\S+)\:)?(\S+)\:)?(\S+)\.?')
 @restricted
 def list_(bot, server, target, source, message, parsed, private):
-    name = parsed.group(1)
-    val = config.getlist(name, server, target)
-    bot.privmsg(target, _('config[\'{name}\']: {val}.', name=name, val=', '.join(val)))
+    serv, chan, name = parsed.group(1, 2, 3)
 
-@command(r'getdict (\S+)')
+    chan = chan or (None if serv else target)
+    serv = serv or server
+
+    val = config.list(name, serv, chan)
+    bot.privmsg(target, _('{name}: {val}', name=name, val=', '.join(val)))
+
+@command(r'getdict (?:(?:(\S+)\:)?(\S+)\:)?(\S+)')
 @restricted
 def getdict(bot, server, target, source, message, parsed, private):
-    name = parsed.group(1)
-    val = config.getdict(name, server, target)
-    bot.privmsg(target, _('config[\'{name}\']: {val}.', name=name, val=val))
+    serv, chan, name = parsed.group(1, 2, 3)
 
+    value = eval(value)
+    chan = chan or (None if serv else target)
+    serv = serv or server
+
+    val = config.getdict(name, serv, chan)
+    bot.privmsg(target, _('{name}: {val}', name=name, val=val))
+
+
+@command(r'del (?:(?:(\S+)\:)?(\S+)\:)?(\S+) (\S+)')
+@restricted
+def del_(bot, server, target, source, message, parsed, private):
+    serv, chan, name, key = parsed.group(1, 2, 3, 4)
+
+    chan = chan or (None if serv else target)
+    serv = serv or server
+
+    config.delete(name, key, serv, chan)
+    bot.privmsg(target, _('{name}{{{key}}} deleted.', name=name, key=key))
 
 ## Misc commands.
 

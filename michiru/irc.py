@@ -45,6 +45,7 @@ class IRCBot(lurklib.Client):
         self.michiru_config = config.get('servers')[self.michiru_server_tag]
         self.michiru_history = {}
         self.michiru_ignores = []
+        self.michiru_identified_cache = []
         # Compile regexp we'll use to see if messages are intended for us.
         self.michiru_message_pattern = re.compile('(?:{nick}[:,;]\s*|{prefixes})(.+)'.format(
             nick=self.current_nick,
@@ -156,10 +157,27 @@ class IRCBot(lurklib.Client):
         # Weed out double entries.
         return list(set(admins))
 
-    def admin(self, nick, chan=None):
+    def is_admin(self, nick, chan=None):
         """ Check if given nickname is admin or channel admin. """
-        return nick in self.admins(chan)
+        # Basic check.
+        if nick not in self.admins(chan):
+            return False
 
+        # Do we have the identification status cached?
+        if nick in self.michiru_identified_cache:
+            return True
+
+        # Check nickserv registration status.
+        info = self.whois(nick)
+        for line in info['ETC']:
+            if 'logged in as' in line or 'has identified for' in line:
+                break
+        else:
+            return False
+
+        # Add nick to cache.
+        self.michiru_identified_cache.append(nick)
+        return True
 
     ## Event handlers.
 
@@ -190,18 +208,30 @@ class IRCBot(lurklib.Client):
         events.emit('irc.join', self, self.michiru_server_tag, target, who)
 
     def on_part(self, who, target, reason):
+        # Invalidate cache entry.
+        if who[0] in self.michiru_identified_cache:
+            self.michiru_identified_cache.remove(who[0])
+
         if self.ignored(who, target):
             return
         # Execute hook.
         events.emit('irc.part', self, self.michiru_server_tag, target, who, reason)
 
     def on_quit(self, who, reason):
+        # Invalidate cache entry.
+        if who[0] in self.michiru_identified_cache:
+            self.michiru_identified_cache.remove(who[0])
+
         if self.ignored(who):
             return
         # Execute hook.
         events.emit('irc.disconnect', self, self.michiru_server_tag, who, reason)
 
     def on_kick(self, target, channel, by, reason):
+        # Invalidate cache entry.
+        if who[0] in self.michiru_identified_cache:
+            self.michiru_identified_cache.remove(who[0])
+
         if self.ignored(target, channel) or self.ignored(by, channel):
             return
         # Execute hook.
@@ -214,6 +244,10 @@ class IRCBot(lurklib.Client):
         events.emit('irc.invite', self, self.michiru_server_tag, channel, by)
 
     def on_nick(self, who, to):
+        # Invalidate cache entry.
+        if who[0] in self.michiru_identified_cache:
+            self.michiru_identified_cache.remove(who[0])
+
         if self.ignored(who) or self.ignored(to):
             return
         # Execute hook.

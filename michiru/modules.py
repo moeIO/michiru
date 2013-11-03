@@ -223,8 +223,8 @@ def unload(name, soft=True):
     # Delete module from dict and config if we're doing a hard unload.
     if not soft:
         del modules[name]
-        if name in config.getlist('modules'):
-            config.remove('modules', name)
+        if name in config.list('modules'):
+            config.delete('modules', name)
 
 def unload_all(soft=True):
     """ Unload all modules. """

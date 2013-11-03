@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # Load and parse configuration.
+import builtins
 import sys
 import os
 import os.path as path
@@ -58,7 +59,7 @@ def get(item, server=None, channel=None):
         return current['_overrides'][server][item]
     return current[item]
 
-def getlist(item, server=None, channel=None):
+def list(item, server=None, channel=None):
     global current
     res = []
 
@@ -96,6 +97,33 @@ def set(item, value, server=None, channel=None):
         current['_overrides'][v][item] = value
     else:
         current[item] = value
+
+def delete(item, key, server=None, channel=None):
+    global current
+
+    v = get(item, server, channel)
+
+    if isinstance(v, dict):
+        if server and channel and (server, channel) in current['_overrides'] and item in current['_overrides'][server, channel] and key in current['_overrides'][server, channel][item]:
+            del current['_overrides'][server, channel][item][key]
+        if server and server in current['_overrides'] and item in current['_overrides'][server] and key in current['_overrides'][server][item]:
+            del current['_overrides'][server][item][key]
+        if item in current and key in current[item]:
+            del current[item][key]
+
+    elif isinstance(v, (builtins.list, builtins.set)):
+        if server and channel and (server, channel) in current['_overrides'] and item in current['_overrides'][server, channel]:
+            while key in current['_overrides'][server, channel][item]:
+                current['_overrides'][server, channel][item].remove(key)
+        if server and server in current['_overrides'] and item in current['_overrides'][server]:
+            while key in current['_overrides'][server][item]:
+                current['_overrides'][server][item].remove(key)
+        if item in current:
+            while key in current[item]:
+                current[item].remove(key)
+
+    else:
+        raise TypeError('Can\'t delete from type {t}.'.format(t=v.__class__.__name__))
 
 def add(item, value, server=None, channel=None):
     global current
