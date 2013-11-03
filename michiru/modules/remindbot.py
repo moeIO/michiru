@@ -9,9 +9,15 @@ from modules import command, hook
 import personalities
 _ = personalities.localize
 
+
+## Module information.
+
 __name__ = 'remindbot'
 __author__ = 'Shiz'
 __license__ = 'WTFPL'
+
+
+## Database stuff.
 
 db.ensure('reminders', {
     'id': db.ID,
@@ -23,6 +29,8 @@ db.ensure('reminders', {
     'time': db.DATETIME
 })
 
+
+## Commands and hooks.
 
 @command(r'(?:remind|tell) (\S+)(?: in (.*?))? (?:that|to) (.*)$')
 def remind(bot, server, target, source, message, parsed, private):
@@ -116,7 +124,7 @@ def parse_timespan(message):
     return datetime.now() + timedelta(seconds=offset)
 
 def check_reminders(bot, server, channel, who):
-    # See if there are untimed reminders for this user.
+    """ See if there are untimed reminders for user in given channel. """
     reminders = db.from_('reminders').where('server', server).and_('channel', channel) \
                                      .and_('to', who).and_('time', None).get('id', 'from', 'message')
     reminders.extend(db.from_('reminders').where('server', server).and_('channel', None) \
@@ -129,6 +137,7 @@ def check_reminders(bot, server, channel, who):
         db.from_('reminders').where('id', reminder['id']).delete()
 
 def do_remind(bot, id):
+    """ Reminder callback. Remind user with reminder with given ID. """
     # Get reminder.
     reminder = db.from_('reminders').where('id', id).single('channel', 'from', 'to', 'message')
     if not reminder:
@@ -141,7 +150,7 @@ def do_remind(bot, id):
     db.from_('reminders').where('id', id).delete()
 
 
-## Module stuff.
+## Boilerplate.
 
 def load():
     return True
