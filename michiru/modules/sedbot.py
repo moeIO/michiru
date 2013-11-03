@@ -7,14 +7,21 @@ import personalities
 from modules import command, hook
 _ = personalities.localize
 
+## Module information.
+
 __name__ = 'sedbot'
 __author__ = 'Shiz'
 __license__ = 'WTFPL'
 
+
+## Configuration and globals.
 config.ensure('sedbot_verbose_errors', False)
 config.ensure('sedbot_log_limit', 5)
+
 last_messages = {}
 
+
+## Commands.
 
 @command(r's(\W{1,2})((?:[^\1]|\\1)+)\1((?:[^\1]|\\1)+)\1([gis]*)', bare=True)
 @command(r'(.+)[,;:] s(\W{1,2})((?:[^\2]|\\2)+)\2((?:[^\1]|\\2)+)\2([gis]*)', bare=True)
@@ -77,7 +84,6 @@ def sed(bot, server, target, source, message, matched, private):
 
     bot.privmsg(target, _('<{nick}> {ftfy}', nick=targ, ftfy=msg, diff=len(msg) - len(matched_message)))
 
-
 # Log messages for later replacement.
 @hook('irc.message')
 def log(bot, server, target, who, message, private):
@@ -93,7 +99,8 @@ def log(bot, server, target, who, message, private):
         last_messages[server, target, who[0]].pop(0)
 
 
-# Module stuff.
+## Boilerplate.
+
 def load():
     return True
 
