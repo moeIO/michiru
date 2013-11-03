@@ -1,9 +1,18 @@
 #!/usr/bin/env python3
 import config
-import db
 import personalities
 from modules import hook
 _ = personalities.localize
+
+
+## Module information.
+
+__name__ = 'waitopiggu'
+__author__ = 'Shiz'
+__license__ = 'WTFPL'
+
+
+## Configuration options.
 
 config.ensure('waitopiggu_channels', [])
 config.ensure('waitopiggu_whitelist', [])
@@ -12,9 +21,8 @@ config.ensure('waitopiggu_ban_message', _('Your origins are not conducive to the
 config.ensure('waitopiggu_ban_proxy', None)
 config.ensure('waitopiggu_ban_proxy_format', None)
 
-__name__ = 'waitopiggu'
-__author__ = 'Shiz'
-__license__ = 'WTFPL'
+
+## Hooks.
 
 @hook('irc.join')
 def join(bot, server, channel, who):
@@ -40,6 +48,9 @@ def join(bot, server, channel, who):
             proxy = config.get('waitopiggu_ban_proxy', server, channel)
             msg = config.get('waitopiggu_ban_proxy_format', server, channel)
             bot.privmsg(proxy, msg.format(nick=who[0], server=server, channel=channel, message=message))
+
+
+## Boilerplate.
 
 def load():
     return False
