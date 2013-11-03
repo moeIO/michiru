@@ -11,9 +11,15 @@ import personalities
 from modules import command
 _ = personalities.localize
 
+
+## Module information.
+
 __name__ = 'uribot'
 __author__ = 'Shiz'
 __license__ = 'WTFPL'
+
+
+## Configuration and constants.
 
 config.ensure('uribot_use_whitelist', False)
 config.ensure('uribot_whitelist', [])
@@ -22,7 +28,7 @@ config.ensure('uribot_whitelist', [])
 URI_REGEXP = re.compile(r"""(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))""")
 
 
-# URI handlers.
+## URI handlers.
 
 def uri_title(contents, matches):
     """ Extract a regular URL title. """
@@ -184,7 +190,7 @@ URI_HANDLERS = {
 }
 
 
-# Commands.
+## Commands.
 
 @command(r'(?:^|.*\s)https?://', bare=True)
 def uri(bot, server, target, source, message, parsed, private):
@@ -240,7 +246,7 @@ def uri(bot, server, target, source, message, parsed, private):
             bot.privmsg(target, _('[{type}] {b}{title}{/b}', type=type, title=title, meta=meta))
 
 
-# Module stuff.
+## Module boilerplate.
 
 def load():
     global URI_HANDLERS
