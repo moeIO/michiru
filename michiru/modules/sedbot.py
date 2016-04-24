@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # sed search/replacement bot.
 import re
 
@@ -11,6 +10,7 @@ _ = personalities.localize
 __name__ = 'sedbot'
 __author__ = 'Shiz'
 __license__ = 'WTFPL'
+__desc__ = 's/foo/bar/'
 
 
 ## Configuration and globals.

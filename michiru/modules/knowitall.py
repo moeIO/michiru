@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Know-it-all module.
 import re
 import json
@@ -16,6 +15,7 @@ _ = personalities.localize
 __name__ = 'know-it-all'
 __author__ = 'Shiz'
 __license__ = 'WTFPL'
+__desc__ = 'Knows things better than you.'
 
 
 ## Configuration.

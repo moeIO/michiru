@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Michiru's core module.
 import os
 import sys
@@ -15,6 +14,7 @@ _ = personalities.localize
 __name__ = 'core'
 __author__ = 'Shiz'
 __license__ = 'WTFPL'
+__desc__ = 'Core functionality.'
 
 
 ## Personality translations.

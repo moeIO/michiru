@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Seenbot module.
 from datetime import datetime
 import json
@@ -12,6 +11,7 @@ _ = personalities.localize
 __name__ = 'seenbot'
 __author__ = 'Shiz'
 __license__ = 'WTFPL'
+__desc__ = 'Tells when someone was last seen.'
 
 
 ## Database stuff and constants.

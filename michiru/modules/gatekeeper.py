@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 from michiru import config, personalities
 from michiru.modules import hook
 _ = personalities.localize
@@ -6,9 +5,10 @@ _ = personalities.localize
 
 ## Module information.
 
-__name__ = 'waitopiggu'
+__name__ = 'gatekeeper'
 __author__ = 'Shiz'
 __license__ = 'WTFPL'
+__desc__ = 'Keep people from unwanted channels out.'
 
 
 ## Configuration options.

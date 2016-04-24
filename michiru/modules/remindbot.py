@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Reminder bot.
 from datetime import datetime, timedelta
 import re
@@ -14,6 +13,7 @@ _ = personalities.localize
 __name__ = 'remindbot'
 __author__ = 'Shiz'
 __license__ = 'WTFPL'
+__desc__ = 'Reminds you of stuff you had long forgotten about.'
 
 
 ## Database stuff.

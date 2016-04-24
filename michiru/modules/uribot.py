@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # URI title bot.
 import re
 import requests
@@ -16,6 +15,7 @@ _ = personalities.localize
 __name__ = 'uribot'
 __author__ = 'Shiz'
 __license__ = 'WTFPL'
+__desc__ = 'Gives URL information.'
 
 
 ## Configuration and constants.

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Loudbot module.
 from datetime import datetime
 import random
@@ -12,6 +11,7 @@ _ = personalities.localize
 __name__ = 'loudbot'
 __author__ = 'Shiz'
 __license__ = 'WTFPL'
+__desc__ = 'LOUDER'
 
 
 ## Configuration, database stuff and globals.
