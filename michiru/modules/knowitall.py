@@ -6,9 +6,8 @@ import random
 import urbandict
 import wolframalpha
 
-import config
-import personalities
-from modules import command
+from michiru import config, personalities
+from michiru.modules import command
 _ = personalities.localize
 
 
@@ -21,7 +20,7 @@ __license__ = 'WTFPL'
 
 ## Configuration.
 
-config.ensure('knowitall_wolfram_api_key', None)
+config.item('knowitall_wolfram_api_key', None)
 
 
 ## Commands.
@@ -29,25 +28,25 @@ config.ensure('knowitall_wolfram_api_key', None)
 @command('(?:what|who|where|how|why)(?: am| is|\'s|are|\'re) (?:an? |the )?(.+)\??$')
 @command('(tell .+)\.?')
 @command('define (.+)\.?')
-def whatis(bot, server, target, source, message, parsed, private):
+def whatis(bot, server, target, source, message, parsed, private, admin):
     wanted = parsed.group(1).strip()
 
     # Obvious edge cases.
-    if wanted == bot.current_nick:
-        bot.privmsg(target, _('Me.'))
+    if wanted == bot.nickname:
+        bot.message(target, _('Me.'))
         return
-    elif wanted == source[0]:
-        bot.privmsg(target, _('You.'))
+    elif wanted == source:
+        bot.message(target, _('You.'))
         return
-    
+
     definition = get_definition(wanted, server=server, channel=target)
-    bot.privmsg(target, definition)
+    bot.message(target, definition)
 
 @command('calculate (.+)')
-def calculate(bot, server, target, source, message, parsed, private):
+def calculate(bot, server, target, source, message, parsed, private, admin):
     wanted = parsed.group(1).strip()
     definition = get_definition(wanted, sources=['wolframalpha'], server=server, channel=target)
-    bot.privmsg(target, definition)
+    bot.message(target, definition)
 
 
 ## Utility functions.

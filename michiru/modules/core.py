@@ -3,14 +3,11 @@
 import os
 import sys
 import io
+import functools
+import pydle
 
-import config
-import db
-import irc
-import modules
-import personalities
-import version
-from modules import command
+from michiru import config, db, irc, modules, personalities, version
+from michiru.modules import command
 _ = personalities.localize
 
 
@@ -73,14 +70,12 @@ personalities.messages('tsun', {
 ## Helper functions.
 
 def restricted(func):
-    def inner(bot, server, target, source, message, parsed, private):
-        if not bot.is_admin(source[0], target):
+    @functools.wraps(func)
+    def inner(bot, server, target, source, message, parsed, private, admin):
+        if not admin:
             raise EnvironmentError(_('This command is restricted to administrators.', cmd=func.__name__))
         else:
-            return func(bot, server, target, source, message, parsed, private=private)
-    inner.__name__ = func.__name__
-    inner.__qualname__ = func.__qualname__
-    inner.__doc__ = func.__doc__
+            return func(bot, server, target, source, message, parsed, private=private, admin=admin)
     return inner
 
 
@@ -89,32 +84,32 @@ def restricted(func):
 @command(r'addadmin (\S+)(?: (\S+))?')
 @command(r'add admin (\S+)(?: on channel (\S+))?\.?$')
 @restricted
-def addadmin(bot, server, target, source, message, parsed, private):
+def addadmin(bot, server, target, source, message, parsed, private, admin):
     nick = parsed.group(1)
     chan = None
     if parsed.group(2):
         chan = parsed.group(2)
 
     bot.promote(nick, chan)
-    bot.privmsg(target, _('Administrator {nick} added.', nick=nick))
+    bot.message(target, _('Administrator {nick} added.', nick=nick))
 
 @command(r'listadmins(?: (\S+))?')
 @command(r'list admins(?: for channel (\S+))?\.?$')
 @restricted
-def listadmins(bot, server, target, source, message, parsed, private):
-    bot.privmsg(target, _('Administrators: {}', ', '.join(bot.admins(parsed.group(1)))))
+def listadmins(bot, server, target, source, message, parsed, private, admin):
+    bot.message(target, _('Administrators: {}', ', '.join(bot.admins(parsed.group(1)))))
 
 @command(r'rmadmin (\S+)(?: (\S+))?')
 @command(r'remove admin (\S+)(?: from channel (\S+))?\.?$')
 @restricted
-def rmadmin(bot, server, target, source, message, parsed, private):
+def rmadmin(bot, server, target, source, message, parsed, private, admin):
     nick = parsed.group(1)
     chan = None
     if parsed.group(2):
         chan = parsed.group(2)
 
     bot.demote(nick, chan)
-    bot.privmsg(target, _('Administrator {nick} removed.', nick=nick))
+    bot.message(target, _('Administrator {nick} removed.', nick=nick))
 
 
 ## Module commands.
@@ -122,84 +117,84 @@ def rmadmin(bot, server, target, source, message, parsed, private):
 @command(r'enable (\S+)(?: (\S+)(?: (\S+))?)?\.?$')
 @command(r'enable (\S+) on (\S+)(?:, channel (\S+))?\.?$')
 @restricted
-def enable(bot, server, target, source, message, parsed, private):
+def enable(bot, server, target, source, message, parsed, private, admin):
     module = parsed.group(1)
     if parsed.group(3):
         server = parsed.group(2)
         channel = parsed.group(3)
         modules.enable(module, server, channel)
 
-        bot.privmsg(target, _('Module {mod} enabled for channel {chan}.', mod=module, srv=server, chan=channel))
+        bot.message(target, _('Module {mod} enabled for channel {chan}.', mod=module, srv=server, chan=channel))
     elif parsed.group(2):
         server = parsed.group(2)
 
         if server != 'global' and server != 'globally':
             modules.enable(module, server)
-            bot.privmsg(target, _('Module {mod} enabled for server {srv}.', mod=module, srv=server))
+            bot.message(target, _('Module {mod} enabled for server {srv}.', mod=module, srv=server))
         else:
             modules.enable(module)
-            bot.privmsg(target, _('Module {mod} globally enabled.', mod=module))
+            bot.message(target, _('Module {mod} globally enabled.', mod=module))
     else:
         modules.enable(module, server, target)
 
-        bot.privmsg(target, _('Module {mod} enabled for channel {chan}.', mod=module, srv=server, chan=target))
+        bot.message(target, _('Module {mod} enabled for channel {chan}.', mod=module, srv=server, chan=target))
 
 @command(r'disable (\S+)(?: (?: on)?(\S+)(?:(?:, channel)? (\S+))?)?\.?')
 @restricted
-def disable(bot, server, target, source, message, parsed, private):
+def disable(bot, server, target, source, message, parsed, private, admin):
     module = parsed.group(1)
     if parsed.group(3):
         server = parsed.group(2)
         channel = parsed.group(3)
         modules.disable(module, server, channel)
 
-        bot.privmsg(target, _('Module {mod} disabled for channel {chan}.', mod=module, srv=server, chan=channel))
+        bot.message(target, _('Module {mod} disabled for channel {chan}.', mod=module, srv=server, chan=channel))
     elif parsed.group(2):
         server = parsed.group(2)
 
         if server != 'global' and server != 'globally':
             modules.disable(module, server)
-            bot.privmsg(target, _('Module {mod} disabled for server {srv}.', mod=module, srv=server))
+            bot.message(target, _('Module {mod} disabled for server {srv}.', mod=module, srv=server))
         else:
             modules.disable(module)
-            bot.privmsg(target, _('Module {mod} globally disabled.', mod=module))
+            bot.message(target, _('Module {mod} globally disabled.', mod=module))
     else:
         modules.disable(module, server, target)
 
-        bot.privmsg(target, _('Module {mod} disabled for channel {chan}.', mod=module, srv=server, chan=target))
+        bot.message(target, _('Module {mod} disabled for channel {chan}.', mod=module, srv=server, chan=target))
 
 
 @command(r'load (?: the)?(\S+)(?: module)?\.?$')
 @restricted
-def load(bot, server, target, source, message, parsed, private):
+def load(bot, server, target, source, message, parsed, private, admin):
     module = parsed.group(1)
     modules.load(module)
-    bot.privmsg(target, _('Module {mod} loaded.', mod=module))
+    bot.message(target, _('Module {mod} loaded.', mod=module))
 
 @command(r'unload (?:the )?(\S+)(?: module)?(?:(?:the )?hard(?: way)?)?\.?')
 @restricted
-def unload(bot, server, target, source, message, parsed, private):
+def unload(bot, server, target, source, message, parsed, private, admin):
     module = parsed.group(1)
     modules.unload(module)
-    bot.privmsg(target, _('Module {mod} unloaded.', mod=module))
+    bot.message(target, _('Module {mod} unloaded.', mod=module))
 
 @command(r'reload (?:the )?(\S+)(?: module)?\.?')
 @restricted
-def reload(bot, server, target, source, message, parsed, private):
+def reload(bot, server, target, source, message, parsed, private, admin):
     module = parsed.group(1)
     modules.load(module, reload=True)
-    bot.privmsg(target, _('Module {mod} reloaded.', mod=module))
+    bot.message(target, _('Module {mod} reloaded.', mod=module))
 
 @command(r'loaded')
-def loaded(bot, server, target, source, message, parsed, private):
-    bot.privmsg(target, _('Loaded modules: {mods}', mods=', '.join(modules.modules.keys()))) 
+def loaded(bot, server, target, source, message, parsed, private, admin):
+    bot.message(target, _('Loaded modules: {mods}', mods=', '.join(modules.modules.keys())))
 
 
 ## Join/part servers/channels.
 
 @command(r'join (\S+)(?: (\S+)(?: (\S+))?)?\.?$')
 @restricted
-def join(bot, server, target, source, message, parsed, private):
+def join(bot, server, target, source, message, parsed, private, admin):
     if parsed.group(2):
         target_serv = parsed.group(1)
         target_chan = parsed.group(2)
@@ -213,7 +208,7 @@ def join(bot, server, target, source, message, parsed, private):
 
 @command(r'part(?: (\S+)(?: (\S+)(?: (\S+))?)?)?\.?$')
 @restricted
-def part(bot, server, target, source, message, parsed, private):
+def part(bot, server, target, source, message, parsed, private, admin):
     if parsed.group(2):
         target_serv = parsed.group(1)
         target_chan = parsed.group(2)
@@ -231,7 +226,7 @@ def part(bot, server, target, source, message, parsed, private):
 @command(r'connect (\S+)(?: ([0-9]+)(?: (true|false))?)?')
 @command(r'connect to (\S+)(?: with port ([0-9]+)(?: and TLS set to (true|false))?)?\.?$')
 @restricted
-def connect(bot, server, target, source, message, parsed, private):
+def connect(bot, server, target, source, message, parsed, private, admin):
     info = bot.michiru_config.copy()
     info['channels'] = []
     info['host'] = parsed.group(1)
@@ -244,31 +239,16 @@ def connect(bot, server, target, source, message, parsed, private):
     if tag in irc.bots:
         raise EnvironmentError(_('Already connected to {tag}.', tag=tag))
 
-    bot.privmsg(target, _('Connecting to {tag}... this might take a while.', tag=tag, host=info['host'], port=info['port']))
+    bot.message(target, _('Connecting to {tag}... this might take a while.', tag=tag, host=info['host'], port=info['port']))
     config.current['servers'][tag] = info
 
-    irc.bots[tag] = irc.IRCBot(
-        tag,
-        info['host'],
-        port=info.get('port', 6697 if info.get('tls', False) else 6667),
-        encoding=info.get('encoding', 'UTF-8'),
+    irc.connect(irc.bots, irc.pool, tag, info)
 
-        tls=info.get('tls', False),
-        tls_verify=info.get('tls_verify', False),
-
-        nick=info['nickname'],
-        user=info.get('username', info['nickname']),
-        real_name=info.get('realname', info['nickname']),
-
-        UTC=True,
-        hide_called_events=True
-    )
-
-    bot.privmsg(target, _('Connected to {tag} successfully.', tag=tag, host=info['host'], port=info['port']))
+    bot.message(target, _('Connected to {tag} successfully.', tag=tag, host=info['host'], port=info['port']))
 
 @command(r'quit(?: (\S+)?)?\.?')
 @restricted
-def quit(bot, server, target, source, message, parsed, private):
+def quit(bot, server, target, source, message, parsed, private, admin):
     if parsed.group(1):
         serv = parsed.group(1)
         if not serv in irc.bots.keys():
@@ -282,9 +262,9 @@ def quit(bot, server, target, source, message, parsed, private):
 
 ## Ignore/unignore commands.
 
-@command(r'ignore (\S+)(?: (#\S+|everywhere))?\.?')
+@command(r'(?:ignore|fuck) (\S+)(?: (#\S+|everywhere))?\.?')
 @restricted
-def ignore(bot, server, target, source, message, parsed, private):
+def ignore(bot, server, target, source, message, parsed, private, admin):
     nick = parsed.group(1)
     chan = parsed.group(2)
     if chan == 'everywhere':
@@ -296,17 +276,18 @@ def ignore(bot, server, target, source, message, parsed, private):
         if bot.ignored(nick):
             raise EnvironmentError(_('Already ignoring {nick}.', nick=nick))
         bot.ignore(nick)
-        bot.privmsg(target, _('{nick} added to ignore list.', nick=nick))
+        bot.message(target, _('{nick} added to ignore list.', nick=nick))
     else:
         if bot.ignored(nick, chan):
             raise EnvironmentError(_('Already ignoring {nick} on channel {chan}.', nick=nick, chan=chan))
         bot.ignore(nick, chan)
-        bot.privmsg(target, _('{nick} added to ignore list for channel {chan}.', nick=nick, chan=chan))
+        bot.message(target, _('{nick} added to ignore list for channel {chan}.', nick=nick, chan=chan))
 
 @command(r'unignore (\S+)(?: (#\S+|everywhere))?')
 @command(r'stop ignoring (\S+)(?: (?:on (\S+)|(everywhere))?)?\.?')
+@command(r'(\S+) is cool(?: (?:on (\S+)|(everywhere))?)?\.?')
 @restricted
-def unignore(bot, server, target, source, message, parsed, private):
+def unignore(bot, server, target, source, message, parsed, private, admin):
     nick = parsed.group(1)
     chan = parsed.group(2)
     if chan == 'everywhere':
@@ -318,33 +299,33 @@ def unignore(bot, server, target, source, message, parsed, private):
         if not bot.ignored(nick):
             raise EnvironmentError(_('Not ignoring {nick}.', nick=nick))
         bot.unignore(nick)
-        bot.privmsg(target, _('{nick} removed from ignore list.', nick=nick))
+        bot.message(target, _('{nick} removed from ignore list.', nick=nick))
     else:
         if not bot.ignored(nick, chan):
             raise EnvironmentError(_('Not ignoring {nick} on channel {chan}.', nick=nick, chan=chan))
         bot.unignore(nick, chan)
-        bot.privmsg(target, _('{nick} removed from ignore list for channel {chan}.', nick=nick, chan=chan))
+        bot.message(target, _('{nick} removed from ignore list for channel {chan}.', nick=nick, chan=chan))
 
 
 ## Configuration commands.
 
 @command(r'loadconf')
 @restricted
-def loadconf(bot, server, target, source, message, parsed, private):
+def loadconf(bot, server, target, source, message, parsed, private, admin):
     config.load()
-    bot.privmsg(target, _('Configuration loaded.'))
+    bot.message(target, _('Configuration loaded.'))
 
 @command(r'saveconf')
 @command(r'save (?:your |the )?configuration\.?$')
 @command(r'b(?:-b)*ack that shit up\.?')
 @restricted
-def saveconf(bot, server, target, source, message, parsed, private):
+def saveconf(bot, server, target, source, message, parsed, private, admin):
     config.save()
-    bot.privmsg(target, _('Configuration saved.'))
+    bot.message(target, _('Configuration saved.'))
 
 @command(r'set (?:(?:(\S+)\:)?(\S+)\:)?(\S+)(?: to)? (.+)\.?$')
 @restricted
-def set(bot, server, target, source, message, parsed, private):
+def set(bot, server, target, source, message, parsed, private, admin):
     serv, chan, name, value = parsed.group(1, 2, 3, 4)
 
     value = eval(value)
@@ -352,11 +333,11 @@ def set(bot, server, target, source, message, parsed, private):
     serv = serv or server
 
     config.set(name, value, serv, chan)
-    bot.privmsg(target, _('Configuration item {name} set.', name=name))
+    bot.message(target, _('Configuration item {name} set.', name=name))
 
 @command(r'add (?:(?:(\S+)\:)?(\S+)\:)?(\S+) (.+)\.?$')
 @restricted
-def add(bot, server, target, source, message, parsed, private):
+def add(bot, server, target, source, message, parsed, private, admin):
     serv, chan, name, value = parsed.group(1, 2, 3, 4)
 
     value = eval(value)
@@ -364,73 +345,73 @@ def add(bot, server, target, source, message, parsed, private):
     serv = serv or server
 
     config.add(name, value, serv, chan)
-    bot.privmsg(target, _('Added value to configuration item {name}.', name=name))
+    bot.message(target, _('Added value to configuration item {name}.', name=name))
 
-@command('setdict (?:(?:(\S+)\:)?(\S+)\:)?(\S+) (\S+) (.+)\.?$')
+@command('setitem (?:(?:(\S+)\:)?(\S+)\:)?(\S+) (\S+) (.+)\.?$')
 @restricted
-def setdict(bot, server, target, source, message, parsed, private):
+def setitem(bot, server, target, source, message, parsed, private, admin):
     serv, chan, item, key, value = parsed.group(1, 2, 3, 4, 5)
 
     value = eval(value)
     chan = chan or (None if serv else target)
     serv = serv or server
 
-    config.setdict(item, name, value, serv, chan)
-    bot.privmsg(target, _('Set key in configuration item {name}.', name=name))
+    config.setitem(item, name, value, serv, chan)
+    bot.message(target, _('Set key in configuration item {name}.', name=name))
 
 @command(r'get (?:(?:(\S+)\:)?(\S+)\:)?(\S+)')
 @command(r'what\'s the value of (\S+)\??$')
 @restricted
-def get(bot, server, target, source, message, parsed, private):
+def get(bot, server, target, source, message, parsed, private, admin):
     serv, chan, name = parsed.group(1, 2, 3)
 
     chan = chan or (None if serv else target)
     serv = serv or server
 
     val = config.get(name, serv, chan)
-    bot.privmsg(target, _('{name}: {val}', name=name, val=val))
+    bot.message(target, _('{name}: {val}', name=name, val=val))
 
 @command(r'list (?:(?:(\S+)\:)?(\S+)\:)?(\S+)\.?')
 @restricted
-def list_(bot, server, target, source, message, parsed, private):
+def list_(bot, server, target, source, message, parsed, private, admin):
     serv, chan, name = parsed.group(1, 2, 3)
 
     chan = chan or (None if serv else target)
     serv = serv or server
 
     val = config.list(name, serv, chan)
-    bot.privmsg(target, _('{name}: {val}', name=name, val=', '.join(val)))
+    bot.message(target, _('{name}: {val}', name=name, val=', '.join(val)))
 
-@command(r'getdict (?:(?:(\S+)\:)?(\S+)\:)?(\S+)')
+@command(r'dict (?:(?:(\S+)\:)?(\S+)\:)?(\S+)')
 @restricted
-def getdict(bot, server, target, source, message, parsed, private):
+def dict_(bot, server, target, source, message, parsed, private, admin):
     serv, chan, name = parsed.group(1, 2, 3)
 
     value = eval(value)
     chan = chan or (None if serv else target)
     serv = serv or server
 
-    val = config.getdict(name, serv, chan)
-    bot.privmsg(target, _('{name}: {val}', name=name, val=val))
+    val = config.dict(name, serv, chan)
+    bot.message(target, _('{name}: {val}', name=name, val=val))
 
 
 @command(r'del (?:(?:(\S+)\:)?(\S+)\:)?(\S+) (\S+)')
 @restricted
-def del_(bot, server, target, source, message, parsed, private):
+def del_(bot, server, target, source, message, parsed, private, admin):
     serv, chan, name, key = parsed.group(1, 2, 3, 4)
 
     chan = chan or (None if serv else target)
     serv = serv or server
 
     config.delete(name, key, serv, chan)
-    bot.privmsg(target, _('{name}{{{key}}} deleted.', name=name, key=key))
+    bot.message(target, _('{name}{{{key}}} deleted.', name=name, key=key))
 
 ## Misc commands.
 
 @command(r'eval (.*)$')
 @command(r'evaluate (.*)$')
 @restricted
-def evaluate(bot, server, target, source, message, parsed, private):
+def evaluate(bot, server, target, source, message, parsed, private, admin):
     code = parsed.group(1)
 
     # Capture output.
@@ -457,43 +438,43 @@ def evaluate(bot, server, target, source, message, parsed, private):
             res = repr(res)
     else:
         res = resio
-    
+
     # Only output if we have something relevant to.
     res = res.strip()
     if res:
         res = res.replace('\n', ' - ')
-        bot.privmsg(target, res)
+        bot.message(target, res)
 
 @command(r'nick (\S+)')
 @command(r'change nick(?:name)? to (\S+)\.?$')
 @restricted
-def nick(bot, server, target, source, message, parsed, private):
+def nick(bot, server, target, source, message, parsed, private, admin):
     bot.nick(parsed.group(1))
 
 @command(r'help\??')
 @command(r'commands')
 @command(r'what are your commands\??$')
-def help(bot, server, target, source, message, parsed, private):
-    bot.privmsg(target, _('Help yourself.'))
+def help(bot, server, target, source, message, parsed, private, admin):
+    bot.message(target, _('Help yourself.'))
 
 @command(r'error (.*)')
-def error(bot, server, target, source, message, parsed, private):
+def error(bot, server, target, source, message, parsed, private, admin):
     raise ValueError(parsed.group(1))
 
 @command(r'source')
 @command(r'where (?:is|can I find) your source(?: code)?\??')
-def source(bot, server, target, source, message, parsed, private):
-    bot.privmsg(target, _('My source is at {src}.', src=version.__source__))
+def source(bot, server, target, source, message, parsed, private, admin):
+    bot.message(target, _('My source is at {src}.', src=version.__source__))
 
 @command(r'version')
 @command(r'what are you\??$')
-def version_(bot, server, target, source, message, parsed, private):
-    bot.privmsg(target, _('This is {n} v{v}, ready to serve.', n=version.__name__, v=version.__version__))
+def version_(bot, server, target, source, message, parsed, private, admin):
+    bot.message(target, _('This is {n} v{v}, ready to serve.', n=version.__name__, v=version.__version__))
 
 
 @command(r'stats')
 @command(r'(?:what(?: kind of)?|how many) resources are you using\??')
-def stats(bot, server, target, source, message, parsed, private):
+def stats(bot, server, target, source, message, parsed, private, admin):
     try:
         import psutil
     except:
@@ -512,7 +493,7 @@ def stats(bot, server, target, source, message, parsed, private):
 
     # And dump info.
     proc = psutil.Process(os.getpid())
-    bot.privmsg(target, _('I use: CPU: {cpuperc}%; RAM: {ramused}/{ramtotal} ({ramperc}%); Threads: {threadcount}; Connections: {conncount}',
+    bot.message(target, _('I use: CPU: {cpuperc}%; RAM: {ramused}/{ramtotal} ({ramperc}%); Threads: {threadcount}; Connections: {conncount}',
         cpuperc=round(proc.get_cpu_percent(), 2),
         ramused=si_ify(proc.get_memory_info()[0]),
         ramtotal=si_ify(psutil.virtual_memory().total),

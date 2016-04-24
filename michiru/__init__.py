@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 # Global initialization.
 
-from version import *
-import version
-
-import config
+from .version import *
+from . import version
+from . import config
 config.load()
-import db
+from . import db
 db.connect()
 
-import irc
-import modules
-import personalities
+from . import events, irc, modules, personalities

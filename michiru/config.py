@@ -8,7 +8,7 @@ import stat
 import pprint
 import shutil
 
-import version as michiru
+from . import version as michiru
 
 # Current configuration.
 current = None
@@ -71,7 +71,7 @@ def list(item, server=None, channel=None):
         res.extend(current['_overrides'][server, channel][item])
     return res
 
-def getdict(item, server=None, channel=None):
+def dict(item, server=None, channel=None):
     global current
     res = {}
 
@@ -103,7 +103,7 @@ def delete(item, key, server=None, channel=None):
 
     v = get(item, server, channel)
 
-    if isinstance(v, dict):
+    if isinstance(v, builtins.dict):
         if server and channel and (server, channel) in current['_overrides'] and item in current['_overrides'][server, channel] and key in current['_overrides'][server, channel][item]:
             del current['_overrides'][server, channel][item][key]
         if server and server in current['_overrides'] and item in current['_overrides'][server] and key in current['_overrides'][server][item]:
@@ -144,7 +144,7 @@ def add(item, value, server=None, channel=None):
             current[item] = []
         current[item].append(value)
 
-def setdict(item, key, value, server=None, channel=None):
+def setitem(item, key, value, server=None, channel=None):
     global current
 
     if server:
@@ -164,7 +164,7 @@ def setdict(item, key, value, server=None, channel=None):
         current[item][key] = value
 
 
-def ensure(item, default):
+def item(item, default):
     """ Ensure configuration item exists. Will initialize it to `default` if it doesn't. """
     global current
 
@@ -183,7 +183,7 @@ def ensure_file(*file, writable=False):
     global LOCAL_DIR
 
     # File doesn't exist, create it locally.
-    path_ = filename(*file, writable=writable) 
+    path_ = filename(*file, writable=writable)
     if not path_:
         path_ = path.join(LOCAL_DIR, *file)
 
@@ -260,11 +260,11 @@ def load():
 
     current = {}
     # Read the file and load its variables up.
-    with open(fn, 'rb') as f: 
+    with open(fn, 'rb') as f:
         exec(f.read(), current, current)
 
     # Ensure override data exists.
-    ensure('_overrides', {})
+    item('_overrides', {})
 
 def save():
     """ Save configuration to CONFIG_FILE. """
@@ -272,7 +272,7 @@ def save():
 
     if not current:
         raise EnvironmentError(_('No configuration loaded.'))
-    
+
     # Get a config file we can write to.
     target = ensure_file(CONFIG_FILE, writable=True)
     if not target:
@@ -286,4 +286,3 @@ def save():
             # ... but only if we can actually read them back again.
             if pprint.isreadable(v):
                 f.write('{} = {}\n'.format(k, pprint.pformat(v)).encode('utf-8'))
-

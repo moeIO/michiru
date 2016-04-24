@@ -4,9 +4,8 @@ from datetime import datetime, timedelta
 import re
 import threading
 
-import db
-from modules import command, hook
-import personalities
+from michiru import db, personalities
+from michiru.modules import command, hook
 _ = personalities.localize
 
 
@@ -19,7 +18,7 @@ __license__ = 'WTFPL'
 
 ## Database stuff.
 
-db.ensure('reminders', {
+db.table('reminders', {
     'id': db.ID,
     'server': (db.STRING, db.INDEX),
     'channel': (db.STRING, db.INDEX),
@@ -33,7 +32,7 @@ db.ensure('reminders', {
 ## Commands and hooks.
 
 @command(r'(?:remind|tell) (\S+)(?: in (.*?))? (?:that|to) (.*)$')
-def remind(bot, server, target, source, message, parsed, private):
+def remind(bot, server, target, source, message, parsed, private, admin):
     targ = parsed.group(1)
     msg = parsed.group(3)
     if parsed.group(2):
@@ -43,7 +42,7 @@ def remind(bot, server, target, source, message, parsed, private):
 
     # Adjust egoisms.
     if targ == 'me':
-        targ = source[0]
+        targ = source
 
     # If we're told to remind someone in a PM, just remind them anywhere. Because we're assholes.
     if private:
@@ -54,7 +53,7 @@ def remind(bot, server, target, source, message, parsed, private):
     id = db.to('reminders').add({
         'server': server,
         'channel': channel,
-        'from': source[0],
+        'from': source,
         'to': targ,
         'message':  msg,
         'time': when
@@ -66,16 +65,16 @@ def remind(bot, server, target, source, message, parsed, private):
         timer = threading.Timer(timeout, do_remind, [bot, id])
         timer.start()
 
-    bot.privmsg(target, _('Reminder added.', to=targ, when=when))
+    bot.message(target, _('Reminder added.', to=targ, when=when))
 
 @hook('irc.join')
 def join(bot, server, channel, who):
-    check_reminders(bot, server, channel, who[0])
+    check_reminders(bot, server, channel, who)
 
 @hook('irc.message')
-def message(bot, server, target, who, message, private):
+def message(bot, server, target, who, message, private, admin):
     if not private:
-        check_reminders(bot, server, target, who[0])
+        check_reminders(bot, server, target, who)
 
 
 ## Callback/utility functions.
@@ -132,7 +131,7 @@ def check_reminders(bot, server, channel, who):
 
     for reminder in reminders:
         # Tell user...
-        bot.privmsg(channel, _('{targ}: <{src}> {msg}', targ=who, src=reminder['from'], msg=reminder['message']))
+        bot.message(channel, _('{targ}: <{src}> {msg}', targ=who, src=reminder['from'], msg=reminder['message']))
         # ... and remove reminder.
         db.from_('reminders').where('id', reminder['id']).delete()
 
@@ -145,7 +144,7 @@ def do_remind(bot, id):
         return
 
     # Tell user.
-    bot.privmsg(reminder['channel'], _('{targ}: <{src}> {msg}', targ=reminder['to'], src=reminder['from'], msg=reminder['message']))
+    bot.message(reminder['channel'], _('{targ}: <{src}> {msg}', targ=reminder['to'], src=reminder['from'], msg=reminder['message']))
     # Remove reminder.
     db.from_('reminders').where('id', id).delete()
 

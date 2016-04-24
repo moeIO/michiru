@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # IRC bot 'personalities'.
-import config
+from . import config
 
-config.ensure('personality', None)
+config.item('personality', None)
 
 IRC_CODES = {
     # Bold.
@@ -36,13 +36,20 @@ IRC_CODES = {
 }
 
 messages_ = {}
+_current_server = None
+_current_channel = None
+
+def set_current(server, channel):
+    global _current_server, _current_channel
+    _current_server = server
+    _current_channel = channel
 
 def localize(_msg, *args, _server=None, _channel=None, **kwargs):
     """ Localize message to current personality, if it supports it. """
     global IRC_CODES, messages
 
     # Find personality and check if personality has an alternative for message.
-    personality = config.get('personality', _server, _channel)
+    personality = config.get('personality', _server or _current_server, _channel or _current_channel)
     if personality and personality in messages_ and _msg in messages_[personality]:
         # Replace message.
         _msg = messages_[personality][_msg]

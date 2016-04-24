@@ -5,10 +5,10 @@ import datetime
 import sqlite3
 import threading
 
-import version as michiru
-import config
+from . import version as michiru, \
+              config
 
-config.ensure('db_file', 'db.sqlite3')
+config.item('db_file', 'db.sqlite3')
 
 DB_FILE = config.get('db_file')
 # SQLite 3 data definitions for abstraction.
@@ -36,7 +36,7 @@ mutex = threading.RLock()
 config.ensure_file(DB_FILE, writable=True)
 
 
-def ensure(name, structure):
+def table(name, structure):
     """ Ensure a data entry with given structure exists. """
     global handle, INDEX, UNIQUE
 
@@ -168,7 +168,7 @@ class Query:
         mutex.release()
 
         return data
-    
+
     def single(self, *fields):
         """ Perform data retrieval query for `fields` and return single row, or None. """
         result = self.get(*fields)
@@ -250,7 +250,7 @@ def query(table, query, *vals):
     mutex.release()
 
     return data
-    
+
 
 def val2db(val, raw=True):
     """
@@ -267,7 +267,7 @@ def val2db(val, raw=True):
 
     elif isinstance(val, bytes):
         if not raw:
-            return b'"' + val.replace(b'"', b'\\"') + b'"' 
+            return b'"' + val.replace(b'"', b'\\"') + b'"'
         return val
 
     elif val is None:

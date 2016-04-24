@@ -2,9 +2,8 @@
 # sed search/replacement bot.
 import re
 
-import config
-import personalities
-from modules import command, hook
+from michiru import config, personalities
+from michiru.modules import command, hook
 _ = personalities.localize
 
 ## Module information.
@@ -15,8 +14,8 @@ __license__ = 'WTFPL'
 
 
 ## Configuration and globals.
-config.ensure('sedbot_verbose_errors', False)
-config.ensure('sedbot_log_limit', 5)
+config.item('sedbot_verbose_errors', False)
+config.item('sedbot_log_limit', 5)
 
 last_messages = {}
 
@@ -25,14 +24,14 @@ last_messages = {}
 
 @command(r's(\W{1,2})((?:[^\1]|\\1)+)\1((?:[^\1]|\\1)+)\1([gis]*)', bare=True)
 @command(r'(.+)[,;:] s(\W{1,2})((?:[^\2]|\\2)+)\2((?:[^\1]|\\2)+)\2([gis]*)', bare=True)
-def sed(bot, server, target, source, message, matched, private):
+def sed(bot, server, target, source, message, matched, private, admin):
     global last_messages
 
     if matched.lastindex >= 5:
         targ = matched.group(1)
         delimiter, pattern, replacement, flags = matched.group(2, 3, 4, 5)
     else:
-        targ = source[0]
+        targ = source
         delimiter, pattern, replacement, flags = matched.group(1, 2, 3, 4)
 
     # Do we have anything on the source?
@@ -82,21 +81,21 @@ def sed(bot, server, target, source, message, matched, private):
             raise ValueError(_('Could not find matching message.'))
         return
 
-    bot.privmsg(target, _('<{nick}> {ftfy}', nick=targ, ftfy=msg, diff=len(msg) - len(matched_message)))
+    bot.message(target, _('<{nick}> {ftfy}', nick=targ, ftfy=msg, diff=len(msg) - len(matched_message)))
 
 # Log messages for later replacement.
 @hook('irc.message')
-def log(bot, server, target, who, message, private):
+def log(bot, server, target, who, message, private, admin):
     global last_messages
 
     # Add message to log.
-    if not (server, target, who[0]) in last_messages:
-        last_messages[server, target, who[0]] = []
-    last_messages[server, target, who[0]].append(message)
+    if not (server, target, who) in last_messages:
+        last_messages[server, target, who] = []
+    last_messages[server, target, who].append(message)
 
     # Prune.
-    while len(last_messages[server, target, who[0]]) > config.get('sedbot_log_limit', server, target):
-        last_messages[server, target, who[0]].pop(0)
+    while len(last_messages[server, target, who]) > config.get('sedbot_log_limit', server, target):
+        last_messages[server, target, who].pop(0)
 
 
 ## Boilerplate.

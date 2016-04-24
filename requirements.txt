@@ -1,6 +1,6 @@
-beautifulsoup4==4.3.1
--e git+https://github.com/Shizmob/lurklib@03831a1ed828fcca1c04d059a7ee92bb8d212cfd#egg=lurklib-dev
-psutil==1.1.1
-requests==2.0.0
--e git+https://github.com/Shizmob/urbandict.py@72c92d124020b7dac73423c17d512da41e4424c0#egg=urbandict-dev
-wolframalpha==1.0.2
+beautifulsoup4
+psutil
+requests
+-e git+https://github.com/Shizmob/urbandict.py@master#egg=urbandict-dev
+wolframalpha
+pydle

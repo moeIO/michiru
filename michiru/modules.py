@@ -4,15 +4,16 @@ import sys
 import os
 import os.path as path
 import re
+import functools
 
-import config
-import events
-import personalities
+from . import config, \
+              events, \
+              personalities
 _ = personalities.localize
 
-config.ensure('modules', [])
-config.ensure('module_overrides', {})
-config.ensure('module_individual_overrides', {})
+config.item('modules', [])
+config.item('module_overrides', {})
+config.item('module_individual_overrides', {})
 
 __path__ = [
     # User modules.
@@ -47,7 +48,7 @@ def register_command(name, pattern, cmd, bare=False, case_sensitive=False):
 def unregister_command(name, pattern, cmd, bare=False, case_sensitive=False):
     """ Unregister command. """
     global commands
-    
+
     # Check if command is registered.
     pattern = re.compile(pattern, re.IGNORECASE | re.UNICODE if not case_sensitive else re.UNICODE)
     if (name, pattern, cmd, bare) not in commands:
@@ -59,17 +60,17 @@ def commands_for(server, channel):
     """ Get all enabled commands for given server and channel. """
     enabledcmds = []
 
-    overrides = config.getdict('modules', server, channel)
+    overrides = config.dict('modules', server, channel)
     for name, pattern, cmd, bare in commands:
         if not name in modules.keys():
             continue
-       
+
         # Check global flag, configure overrides and per-channel/server overrides.
         module, initialized, enabled = modules[name]
 
         if name in overrides:
             enabled = overrides[name]
-    
+
         if enabled:
             # Yay, an enabled command.
             enabledcmds.append((name, pattern, cmd, bare))
@@ -81,11 +82,11 @@ def commands_for(server, channel):
 
 def enable(name, server=None, channel=None):
     """ Enable module for given server and/or channel, or globally. """
-    config.setdict('modules', name, True, server, channel)
+    config.setitem('modules', name, True, server, channel)
 
 def disable(name, server=None, channel=None):
     """ Disable module for given server and/or channel, or globally. """
-    config.setdict('modules', name, False, server, channel)
+    config.setitem('modules', name, False, server, channel)
 
 
 ## Decorators.
@@ -118,13 +119,13 @@ def load(name, soft=True, reload=False):
     """
     global __path__, modules, _commands, _hooks
     name = path.basename(name)
-    
+
     # Decide if the module is already loaded and if we need to unload it.
     if reload:
         unload(name, soft=False)
     if not soft and name in modules.keys():
         raise EnvironmentError(_('Module {mod} already loaded.', mod=name))
-    
+
     # Attempt to locate the module.
     if not soft or name not in modules.keys():
         loadpath = None
@@ -180,7 +181,7 @@ def load(name, soft=True, reload=False):
 
     # And initialize the module.
     module, initialized, enabled = modules[name]
-    if initialized and not reload:
+    if initialized and not soft and not reload:
         raise EnvironmentError(_('Module {mod} already loaded.', mod=name))
 
     # Finally, run the load routine.
@@ -219,7 +220,7 @@ def unload(name, soft=True):
     except Exception as e:
         if soft:
             raise EnvironmentError(_('Error while unloading module {mod}: {err}', mod=name, err=e))
-    
+
     # Delete module from dict and config if we're doing a hard unload.
     if not soft:
         del modules[name]

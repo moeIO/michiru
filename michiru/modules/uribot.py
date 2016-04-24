@@ -6,9 +6,8 @@ import bs4
 import json
 import urllib.parse
 
-import config
-import personalities
-from modules import command
+from michiru import config, personalities
+from michiru.modules import command
 _ = personalities.localize
 
 
@@ -21,8 +20,8 @@ __license__ = 'WTFPL'
 
 ## Configuration and constants.
 
-config.ensure('uribot_use_whitelist', False)
-config.ensure('uribot_whitelist', [])
+config.item('uribot_use_whitelist', False)
+config.item('uribot_whitelist', [])
 
 # Thanks Hitler, Obama and Daring Fireball.
 URI_REGEXP = re.compile(r"""(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))""")
@@ -185,7 +184,7 @@ URI_HANDLERS = {
     r'^https?://(?:www\.){0,1}twitter\.com/([a-zA-Z0-9_-]+)/status/([0-9]+)(?:[?#&]\S*)?$':
         (uri_twitter, None),
     # 4chan thread/post.
-    r'^https?://boards\.4chan\.org/([a-z0-9]+)/res/([0-9]+)(?:#p?([0-9]+))?$': 
+    r'^https?://boards\.4chan\.org/([a-z0-9]+)/res/([0-9]+)(?:#p?([0-9]+))?$':
         (uri_4chan, r'https://api.4chan.org/\1/res/\2.json')
 }
 
@@ -193,9 +192,9 @@ URI_HANDLERS = {
 ## Commands.
 
 @command(r'(?:^|.*\s)https?://', bare=True)
-def uri(bot, server, target, source, message, parsed, private):
+def uri(bot, server, target, source, message, parsed, private, admin):
     global URI_REGEXP, URI_HANDLERS
-    
+
     # Find all URIs and process them.
     for match in re.findall(URI_REGEXP, message):
         uri = match[0]
@@ -241,9 +240,9 @@ def uri(bot, server, target, source, message, parsed, private):
 
         # Post info.
         if meta:
-            bot.privmsg(target, _('[{type}] {b}{title}{/b} ({meta})', type=type, title=title, meta=meta))
+            bot.message(target, _('[{type}] {b}{title}{/b} ({meta})', type=type, title=title, meta=meta))
         else:
-            bot.privmsg(target, _('[{type}] {b}{title}{/b}', type=type, title=title, meta=meta))
+            bot.message(target, _('[{type}] {b}{title}{/b}', type=type, title=title, meta=meta))
 
 
 ## Module boilerplate.

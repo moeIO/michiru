@@ -2,29 +2,29 @@
 # Michiru's IRC core.
 import re
 import time
-import lurklib
 import traceback
+import pydle
 
-import version as michiru
-import config
-import db
-import events
-import modules
-import personalities
+from . import version as michiru, \
+              config, \
+              db, \
+              events, \
+              modules, \
+              personalities
 _ = personalities.localize
 
-config.ensure('servers', {})
-config.ensure('command_prefixes', [':'])
+config.item('servers', {})
+config.item('command_prefixes', [':'])
 
 
-db.ensure('_admins', {
+db.table('_admins', {
     'id': db.ID,
     'server': (db.STRING, db.INDEX),
     'channel': (db.STRING, db.INDEX),
     'nickname': db.STRING
 })
 
-db.ensure('_ignores', {
+db.table('_ignores', {
     'id': db.ID,
     'server': (db.STRING, db.INDEX),
     'channel': db.STRING,
@@ -33,22 +33,26 @@ db.ensure('_ignores', {
 
 
 bots = {}
+pool = pydle.ClientPool()
 
-class IRCBot(lurklib.Client):
+
+class IRCBot(pydle.Client):
     """
     IRC bot core. Executes module commands!
     """
-
-    def __init__(self, tag, *args, **kwargs):
-        super(lurklib.Client, self).__init__(*args, **kwargs)
+    def __init__(self, tag, config, *args, **kwargs):
         self.michiru_server_tag = tag
-        self.michiru_config = config.get('servers')[self.michiru_server_tag]
+        self.michiru_config = config
+        super().__init__(*args, **kwargs)
+
+    def _reset_attributes(self):
+        super()._reset_attributes()
         self.michiru_history = {}
         self.michiru_ignores = []
-        self.michiru_identified_cache = []
+
         # Compile regexp we'll use to see if messages are intended for us.
         self.michiru_message_pattern = re.compile('(?:{nick}[:,;]\s*|{prefixes})(.+)'.format(
-            nick=self.current_nick,
+            nick=self.michiru_config['nickname'],
             prefixes='[{chars}]'.format(chars=''.join(re.escape(x) for x in config.get('command_prefixes', server=self.michiru_server_tag)))
         ), re.IGNORECASE)
 
@@ -62,15 +66,6 @@ class IRCBot(lurklib.Client):
 
 
     ## Added functionality.
-
-    def ctcp(self, target, message):
-        """ Send CTCP request to target. """
-        return self.privmsg(target, self.ctcp_encode(message))
-
-    def ctcp_reply(self, target, type, message):
-        """ Send CTCP reply to target. """
-        return self.notice(target, self.ctcp_encode(type + ' ' + message))
-
 
     def ignore(self, who, chan=None):
         """ Ignore user, optionally only in `chan`. """
@@ -104,7 +99,6 @@ class IRCBot(lurklib.Client):
 
     def ignored(self, who, chan=None):
         """ Check if user is ignored. """
-        who = who[0] if isinstance(who, tuple) else who
         return who in self.michiru_ignores or (who, chan) in self.michiru_ignores
 
 
@@ -157,38 +151,32 @@ class IRCBot(lurklib.Client):
         # Weed out double entries.
         return list(set(admins))
 
+    @pydle.coroutine
     def is_admin(self, nick, chan=None):
         """ Check if given nickname is admin or channel admin. """
         # Basic check.
         if nick not in self.admins(chan):
             return False
 
-        # Do we have the identification status cached?
-        if nick in self.michiru_identified_cache:
+        if self.users.get(nick, {}).get('identified'):
             return True
 
-        # Check nickserv registration status.
-        info = self.whois(nick)
-        for line in info['ETC']:
-            if 'logged in as' in line or 'has identified for' in line:
-                break
-        else:
-            return False
+        info = yield self.whois(nick)
+        if info and info['identified']:
+            return True
 
-        # Add nick to cache.
-        self.michiru_identified_cache.append(nick)
-        return True
+        return False
 
     ## Event handlers.
 
     def on_connect(self):
         # Authenticate if possible.
         if self.michiru_config.get('nickserv_password'):
-            self.privmsg('NickServ', 'identify {}'.format(self.michiru_config['nickserv_password']))
+            self.message('NickServ', 'identify {}'.format(self.michiru_config['nickserv_password']))
 
-            # Give it a tiny bit of time before attempting to join channels to verify us.
-            time.sleep(1)
+        self.eventloop.schedule_in(1, self.on_identified)
 
+    def on_identified(self):
         if self.michiru_config.get('channels'):
             # Join all channels we are supposed to.
             for chan in self.michiru_config['channels']:
@@ -196,82 +184,79 @@ class IRCBot(lurklib.Client):
                     chan, password = chan
                 else:
                     password = None
-                self.join_(chan, password)
+                self.join(chan, password)
 
         # Execute hook.
+        personalities.set_current(self.michiru_server_tag, None)
         events.emit('irc.connect', self, self.michiru_server_tag)
 
-    def on_join(self, who, target):
-        if self.ignored(who, target):
+    def on_join(self, channel, user):
+        if self.ignored(user, channel):
             return
         # Execute hook.
-        events.emit('irc.join', self, self.michiru_server_tag, target, who)
+        personalities.set_current(self.michiru_server_tag, channel)
+        events.emit('irc.join', self, self.michiru_server_tag, channel, user)
 
-    def on_part(self, who, target, reason):
-        # Invalidate cache entry.
-        if who[0] in self.michiru_identified_cache:
-            self.michiru_identified_cache.remove(who[0])
-
-        if self.ignored(who, target):
+    def on_part(self, channel, user, reason=None):
+        if self.ignored(user, channel):
             return
         # Execute hook.
-        events.emit('irc.part', self, self.michiru_server_tag, target, who, reason)
+        personalities.set_current(self.michiru_server_tag, channel)
+        events.emit('irc.part', self, self.michiru_server_tag, channel, user, reason)
 
-    def on_quit(self, who, reason):
-        # Invalidate cache entry.
-        if who[0] in self.michiru_identified_cache:
-            self.michiru_identified_cache.remove(who[0])
-
-        if self.ignored(who):
+    def on_quit(self, user, reason=None):
+        if self.ignored(user):
             return
         # Execute hook.
-        events.emit('irc.disconnect', self, self.michiru_server_tag, who, reason)
+        personalities.set_current(self.michiru_server_tag, None)
+        events.emit('irc.disconnect', self, self.michiru_server_tag, user, reason)
 
-    def on_kick(self, target, channel, by, reason):
-        # Invalidate cache entry.
-        if who[0] in self.michiru_identified_cache:
-            self.michiru_identified_cache.remove(who[0])
-
+    def on_kick(self, channel, target, by, reason):
         if self.ignored(target, channel) or self.ignored(by, channel):
             return
         # Execute hook.
+        personalities.set_current(self.michiru_server_tag, channel)
         events.emit('irc.kick', self, self.michiru_server_tag, channel, target, by, reason)
 
-    def on_invite(self, by, channel):
+    def on_invite(self, channel, by):
         if self.ignored(by, channel):
             return
         # Execute hook.
+        personalities.set_current(self.michiru_server_tag, None)
         events.emit('irc.invite', self, self.michiru_server_tag, channel, by)
 
-    def on_nick(self, who, to):
-        # Invalidate cache entry.
-        if who[0] in self.michiru_identified_cache:
-            self.michiru_identified_cache.remove(who[0])
-
-        if self.ignored(who) or self.ignored(to):
+    def on_nick_change(self, old, new):
+        if self.ignored(old):
+            self.unignore(old)
+            self.ignore(new)
             return
         # Execute hook.
-        events.emit('irc.nickchange', self, self.michiru_server_tag, who, to)
+        personalities.set_current(self.michiru_server_tag, None)
+        events.emit('irc.nickchange', self, self.michiru_server_tag, old, new)
 
-    def on_channotice(self, source, channel, message, private=False):
-        if self.ignored(source, channel):
+    def on_notice(self, target, by, message):
+        if self.ignored(by, target):
             return
+        private = not self.is_channel(target)
+        admin = yield self.is_admin(by)
         # Execute hook.
-        events.emit('irc.notice', self, self.michiru_server_tag, channel, source, message, private)
+        personalities.set_current(self.michiru_server_tag, None if private else target)
+        events.emit('irc.notice', self, self.michiru_server_tag, target, by, message, private, admin)
 
-    def on_privnotice(self, source, message):
-        # Private notices aren't any different.
-        return self.on_channotice(source, source[0], message, private=True)
-
-    def on_topic(self, setter, channel, topic):
+    def on_topic_change(self, channel, topic, setter):
         if self.ignored(setter, channel):
             return
         # Execute hook.
+        personalities.set_current(self.michiru_server_tag, channel)
         events.emit('irc.topicchange', self, self.michiru_server_tag, channel, setter, topic)
 
-    def on_chanmsg(self, source, channel, message, private=False):
-        if self.ignored(source, channel):
+    @pydle.coroutine
+    def on_message(self, target, by, message):
+        if self.ignored(by, target):
             return
+        private = not self.is_channel(target)
+        source = by if private else target
+        admin = yield self.is_admin(by)
 
         # See if message is meant for us, according to the following cases:
         # 1. Message starts with our nickname followed by a delimiter and optional whitespace.
@@ -285,98 +270,84 @@ class IRCBot(lurklib.Client):
             parsed_message = message.strip()
 
         server = self.michiru_server_tag
+        personalities.set_current(server, None if private else target)
         # Iterate through all modules enabled for us and get all the commands from them.
-        for module, matcher, cmd, bare in modules.commands_for(server, channel):
+        for module, matcher, cmd, bare in modules.commands_for(server, None if private else target):
              # See if we need to invoke its handler.
             if bare or private:
                 matched_message = matcher.match(message)
                 # And invoke if we have to.
                 if matched_message:
                     try:
-                        cmd(self, server, channel, source, message, matched_message, private=private)
+                        cmd(self, server, target, by, message, matched_message, private=private, admin=admin)
                     except Exception as e:
-                        self.notice(source[0], _('Error while executing [{mod}:{cmd}]: {err}', mod=module, cmd=cmd.__name__, err=e))
+                        self.notice(source, _('Error while executing [{mod}:{cmd}]: {err}', mod=module, cmd=cmd.__name__, err=e))
                         traceback.print_exc()
             elif matched_nick:
                 matched_message = matcher.match(parsed_message)
                 # Dito.
                 if matched_message:
                     try:
-                        cmd(self, server, channel, source, parsed_message, matched_message, private=private)
+                        cmd(self, server, target, by, parsed_message, matched_message, private=private, admin=admin)
                     except Exception as e:
-                        self.notice(source[0], _('Error while executing [{mod}:{cmd}]: {err}', mod=module, cmd=cmd.__name__, err=e))
+                        self.notice(source, _('Error while executing [{mod}:{cmd}]: {err}', mod=module, cmd=cmd.__name__, err=e))
                         traceback.print_exc()
 
         # And execute hooks.
         try:
-            events.emit('irc.message', self, server, channel, source, message, private=False)
+            events.emit('irc.message', self, server, target, by, message, private, admin)
         except Exception as e:
-            self.privmsg(notice, _('Error while executing hooks for {event}: {err}', event='irc.msg', err=e))
+            self.notice(source, _('Error while executing hooks for {event}: {err}', event='irc.msg', err=e))
 
-    
-    def on_privmsg(self, source, message):
-        # Private messages aren't any different, except that they are always intended for us, so we don't need to check.
-        return self.on_chanmsg(source, source[0], message, private=True)
-    
-    def on_chanctcp(self, source, channel, message, private=False):
-        if self.ignored(source, channel):
+    def on_ctcp_version(self, by, target, contents):
+        if self.ignored(by, target):
             return
+        self.ctcp_reply(by, 'VERSION', '{m} v{v}'.format(m=michiru.__name__, v=michiru.__version__))
 
-        # Some default CTCP replies.
-        if message == 'VERSION' or message == 'FINGER':
-            self.ctcp_reply(source[0], message, '{m} v{v}'.format(m=michiru.__name__, v=michiru.__version__))
-        elif message == 'SOURCE':
-            self.ctcp_reply(source[0], message, michiru.__source__)
-        elif message == 'USERINFO':
-            info = self.michiru_config
-            self.ctcp_reply(source[0], message, '{user} ({real})'.format(user=info.get('username', info['nickname']), real=info.get('realname', info['nickname'])))
-        
-        # And execute hooks.
-        events.emit('irc.ctcp', self, self.michiru_server_tag, channel, source, message)
+    def on_ctcp_source(self, by, target, contents):
+        if self.ignored(by, target):
+            return
+        self.ctcp_reply(by, 'SOURCE', michiru.__source__)
 
-    def on_privctcp(self, source, message):
-        return self.on_chanctcp(source, source[0], message, private=True)
+    def on_ctcp_userinfo(self, by, target, contents):
+        if self.ignored(by, target):
+            return
+        self.ctcp_reply(by, 'USERINFO', '{user} ({real})'.format(user=self.username, real=self.realname))
 
-def setup():
+    def on_ctcp(self, by, target, what, contents):
+        if self.ignored(by, target):
+            return
+        personalities.set_current(self.michiru_server_tag, None)
+        events.emit('irc.ctcp', self, self.michiru_server_tag, target, by, contents)
+
+
+def connect(bots, pool, tag, info):
+    # Create bot.
+    bots[tag] = IRCBot(
+        tag,
+        info,
+        encoding=info.get('encoding', 'UTF-8'),
+        nickname=info['nickname'],
+        username=info.get('username'),
+        realname=info.get('realname'),
+    )
+    pool.connect(bots[tag],
+        hostname=info['host'],
+        port=info.get('port', 6697 if info.get('tls', False) else 6667),
+        tls=info.get('tls', False),
+        tls_verify=info.get('tls_verify', False)
+    )
+
+def setup(bots, pool):
     """ Setup the bots. """
-    global bots
-
     for tag, info in config.get('servers').items():
-        # Create bot.
-        bots[tag] = IRCBot(
-            tag,
-            info['host'],
-            port=info.get('port', 6697 if info.get('tls', False) else 6667),
-            encoding=info.get('encoding', 'UTF-8'),
+        connect(bots, pool, tag, info)
 
-            tls=info.get('tls', False),
-            tls_verify=info.get('tls_verify', False),
-
-            nick=info['nickname'],
-            user=info.get('username', info['nickname']),
-            real_name=info.get('realname', info['nickname']),
-
-            UTC=True,
-            hide_called_events=True
-        )
-
-def main_loop():
+def run_forever():
     """ Run the main loop. Should not return unless all bots died. """
     # Since lurklib by default only has a single main loop for a single client,
     # copy some code from theirs to make it work with multiple clients.
-    global bots
+    global bots, pool
 
-    while bots:
-        for tag, bot in bots.items():
-            # Run connect handler if we need to.
-            if bot.on_connect and not bot.readable(2):
-                bot.on_connect()
-                bot.on_connect = None
-
-        # Make a copy of the bot values so we can change them.
-        IRCBot.process_multiple(*bots.values(), timeout=1)
-
-        for tag, bot in list(bots.items()):
-            # No point in keeping it if it doesn't wanna.
-            if not bot.keep_going:
-                del bots[tag]
+    setup(bots, pool)
+    pool.handle_forever()

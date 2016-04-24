@@ -3,9 +3,8 @@
 from datetime import datetime
 import json
 
-import db
-import personalities
-from modules import command, hook
+from michiru import db, personalities
+from michiru.modules import command, hook
 _ = personalities.localize
 
 
@@ -17,7 +16,7 @@ __license__ = 'WTFPL'
 
 ## Database stuff and constants.
 
-db.ensure('seen', {
+db.table('seen', {
     'id': db.ID,
     'server': (db.STRING, db.INDEX),
     'nickname': (db.STRING, db.INDEX),
@@ -102,7 +101,7 @@ def log(server, nick, what, **data):
     })
 
 def meify(bot, nick):
-    if bot.current_nick == nick:
+    if bot.nickname == nick:
         return 'me'
     return nick
 
@@ -111,21 +110,21 @@ def meify(bot, nick):
 
 @command(r'seen (\S+)$')
 @command(r'have you seen (\S+)(?: lately)?\??$')
-def seen(bot, server, target, source, message, parsed, private):
+def seen(bot, server, target, source, message, parsed, private, admin):
     nick = parsed.group(1)
 
     # Weed out the odd cases.
-    if nick == source[0]:
-        bot.privmsg(target, _('Asking for yourself?', serv=server, nick=nick))
+    if nick == source:
+        bot.message(target, _('Asking for yourself?', serv=server, nick=nick))
         return
-    elif nick == bot.current_nick:
-        bot.privmsg(target, _("I'm right here.", serv=server, nick=nick))
+    elif nick == bot.nickname:
+        bot.message(target, _("I'm right here.", serv=server, nick=nick))
         return
 
     # Do we have an entry for this nick?
     entry = db.from_('seen').where('nickname', nick).and_('server', server).single('action', 'data', 'time')
     if not entry:
-        bot.privmsg(target, _("I don't know who {nick} is.", serv=server, nick=nick))
+        bot.message(target, _("I don't know who {nick} is.", serv=server, nick=nick))
         return
 
     message = 'I saw {nick} {timeago}, {action}'
@@ -162,47 +161,47 @@ def seen(bot, server, target, source, message, parsed, private):
         submessage = _('doing something.', serv=server, **data)
 
     message = _(message, action=submessage, nick=nick, serv=server, rawtime=time, timeago=timespan(time))
-    bot.privmsg(target, message)
+    bot.message(target, message)
 
 @hook('irc.join')
 def join(bot, server, channel, who):
-    log(server, who[0], Actions.JOIN, chan=channel)
+    log(server, who, Actions.JOIN, chan=channel)
 
 @hook('irc.part')
 def part(bot, server, channel, who, reason):
-    log(server, who[0], Actions.PART, chan=channel, reason=reason)
+    log(server, who, Actions.PART, chan=channel, reason=reason)
 
 @hook('irc.disconnect')
 def quit(bot, server, who, reason):
-    log(server, who[0], Actions.QUIT, reason=reason)
+    log(server, who, Actions.QUIT, reason=reason)
 
 @hook('irc.kick')
 def kick(bot, server, channel, target, by, reason):
-    log(server, by[0], Actions.KICK, chan=channel, target=meify(bot, target[0]), reason=reason)
-    log(server, target[0], Actions.KICKED, chan=channel, kicker=meify(bot, by[0]), reason=reason)
+    log(server, by, Actions.KICK, chan=channel, target=meify(bot, target), reason=reason)
+    log(server, target, Actions.KICKED, chan=channel, kicker=meify(bot, by), reason=reason)
 
 @hook('irc.nickchange')
 def nickchange(bot, server, who, to):
-    log(server, who[0], Actions.NICKCHANGE, newnick=to)
-    log(server, to[0], Actions.NICKCHANGED, oldnick=who)
+    log(server, who, Actions.NICKCHANGE, newnick=to)
+    log(server, to, Actions.NICKCHANGED, oldnick=who)
 
 @hook('irc.message')
-def message(bot, server, target, who, message, private):
+def message(bot, server, target, who, message, private, admin):
     if not private:
-        log(server, who[0], Actions.MESSAGE, chan=target, message=message)
+        log(server, who, Actions.MESSAGE, chan=target, message=message)
 
 @hook('irc.notice')
-def notice(bot, server, target, who, message, private):
+def notice(bot, server, target, who, message, private, admin):
     if not private:
-        log(server, who[0], Actions.NOTICE, chan=target, message=message)
+        log(server, who, Actions.NOTICE, chan=target, message=message)
 
 @hook('irc.topicchange')
 def topicchange(bot, server, channel, who, topic):
-    log(server, who[0], Actions.TOPICCHANGE, chan=channel, topic=topic)
+    log(server, who, Actions.TOPICCHANGE, chan=channel, topic=topic)
 
 @hook('irc.ctcp')
 def ctcp(bot, server, target, who, message):
-    log(server, who[0], Actions.CTCP, target=meify(bot, target[0] if isinstance(target, tuple) else target), message=message)
+    log(server, who, Actions.CTCP, target=meify(bot, target), message=message)
 
 
 ## Boilerplate.
