@@ -16,8 +16,8 @@ __desc__ = 'LOUDER'
 
 ## Configuration, database stuff and globals.
 
-config.item('loudbot_cutoff_length', 8)
-config.item('loudbot_response_chance', 0.2)
+config.item('loudbot.cutoff_length', 8)
+config.item('loudbot.response_chance', 0.2)
 
 db.table('shouts', {
     'id': db.ID,
@@ -48,11 +48,11 @@ personalities.messages('tsun', {
     'No last shout for channel {chan} found.':
         'I-I don\'t know anything about that channel!',
     'Unknown shout for channel {chan}.':
-        'What shout are you talking about? Iiidiot.',
+        'Which shout are you talking about? バカ！',
     'YOU taught me that (don\'t remember? Put down the bong!) on {date}.':
         'YOU taught me that! D-Don\'t tell me you don\'t remember!',
     '{nick} taught me that on {date}.':
-        '{nick} taught me that, that no-good.'
+        'That no-good {nick} taught me that! ( ¯◡◡¯·)'
 })
 
 
@@ -64,11 +64,11 @@ def shout(bot, server, target, source, message, parsed, private, admin):
     shout = parsed.group(1)
 
     # Don't record shouts that are too short.
-    if len(shout) < config.get('loudbot_cutoff_length'):
+    if len(shout) < config.get('loudbot.cutoff_length'):
         return
 
     # Respond with another shout.
-    if random.random() <= config.get('loudbot_response_chance'):
+    if random.random() <= config.get('loudbot.response_chance'):
         # Fetch random shout.
         to_shout = db.from_('shouts').where('server', server).and_('channel', target) \
                                      .random().limit(1).single('id', 'shout')

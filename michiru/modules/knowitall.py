@@ -20,8 +20,19 @@ __desc__ = 'Knows things better than you.'
 
 ## Configuration.
 
-config.item('knowitall_wolfram_api_key', None)
-
+config.item('knowitall.wolfram_api_key', None)
+personalities.messages('tsun', {
+    'Me.':
+        'Michiru でーす！',
+    'You.':
+        'It\'s you! ( ´・‿-) ~ ♥',
+    'I have no idea what you\'re talking about.':
+        'I-I don\'t know what you\'re talking about, but you made the right choice by asking ME anyway! ( ´・‿-) ~ ♥',
+    'What is this you are speaking of?':
+        'I-It\'s not like I\'d tell someone like YOU, even if I knew!',
+    'I\'ll keep it in mind for next time.':
+        'S-stop bothering me with these weird things!'
+})
 
 ## Commands.
 
@@ -68,7 +79,7 @@ def get_definition(wanted, sources=['urbandictionary', 'wolframalpha'], server=N
 
     # WolframAlpha for scientific inquiries and the like.
     if not definition and 'wolframalpha' in sources:
-        client = wolframalpha.Client(config.get('knowitall_wolfram_api_key', server, channel))
+        client = wolframalpha.Client(config.get('knowitall.wolfram_api_key', server, channel))
         wares = client.query(wanted)
 
         wadefs = []

@@ -14,8 +14,8 @@ __desc__ = 's/foo/bar/'
 
 
 ## Configuration and globals.
-config.item('sedbot_verbose_errors', False)
-config.item('sedbot_log_limit', 5)
+config.item('sedbot.verbose_errors', False)
+config.item('sedbot.log_limit', 5)
 
 last_messages = {}
 
@@ -36,7 +36,7 @@ def sed(bot, server, target, source, message, matched, private, admin):
 
     # Do we have anything on the source?
     if not (server, target, targ) in last_messages.keys():
-        if config.get('sedbot_verbose_errors', server, target):
+        if config.get('sedbot.verbose_errors', server, target):
             raise EnvironmentError(_('No messages to match.'))
         return
 
@@ -55,12 +55,12 @@ def sed(bot, server, target, source, message, matched, private, admin):
     try:
         expr = re.compile(pattern, re_flags)
         if not expr:
-            if config.get('sedbot_verbose_errors', server, target):
+            if config.get('sedbot.verbose_errors', server, target):
                 raise ValueError(_('Invalid regular expression.'))
             return
     except:
         # Not a valid regexp.
-        if config.get('sedbot_verbose_errors', server, target):
+        if config.get('sedbot.verbose_errors', server, target):
             raise ValueError(_('Invalid regular expression.'))
         return
 
@@ -77,7 +77,7 @@ def sed(bot, server, target, source, message, matched, private, admin):
 
     # No message matched?
     if not msg:
-        if config.get('sedbot_verbose_errors', server, target):
+        if config.get('sedbot.verbose_errors', server, target):
             raise ValueError(_('Could not find matching message.'))
         return
 
@@ -94,7 +94,7 @@ def log(bot, server, target, who, message, private, admin):
     last_messages[server, target, who].append(message)
 
     # Prune.
-    while len(last_messages[server, target, who]) > config.get('sedbot_log_limit', server, target):
+    while len(last_messages[server, target, who]) > config.get('sedbot.log_limit', server, target):
         last_messages[server, target, who].pop(0)
 
 

@@ -49,42 +49,82 @@ else:
     raise EnvironmentError('Unknown platform!')
 
 
+def _has(name, parent=None):
+    if parent is None:
+        parent = current
+
+    if '.' in name:
+        pname, name = name.rsplit('.', maxsplit=1)
+        try:
+            parent = _get(pname, parent)
+        except KeyError:
+            return False
+
+    return name in parent
+
+def _get(name, parent=None):
+    if parent is None:
+        parent = current
+
+    if '.' in name:
+        pname, name = name.rsplit('.', maxsplit=1)
+        parent = _get(pname, parent)
+        return _get(name, parent)
+
+    return parent[name]
+
+def _set(name, value, parent=None):
+    if parent is None:
+        parent = current
+
+    if '.' in name:
+        pname, name = name.rsplit('.', maxsplit=1)
+        try:
+            parent = _get(pname, parent)
+        except KeyError:
+            _set(pname, {}, parent)
+            parent = _get(pname, parent)
+        return _set(name, value, parent)
+
+    parent[name] = value
+
 
 def get(item, server=None, channel=None):
     global current
 
-    if server and channel and (server, channel) in current['_overrides'] and item in current['_overrides'][server, channel]:
-        return current['_overrides'][server, channel][item]
-    elif server and server in current['_overrides'] and item in current['_overrides'][server]:
-        return current['_overrides'][server][item]
-    return current[item]
+    if server and channel and (server, channel) in current['_overrides'] and _has(item, current['_overrides'][server, channel]):
+        return _get(item, current['_overrides'][server, channel])
+    elif server and server in current['_overrides'] and _has(item, current['_overrides'][server]):
+        return _get(item, current['_overrides'][server])
+    return _get(item)
 
 def list(item, server=None, channel=None):
     global current
     res = []
 
-    if item in current:
-        res.extend(current[item])
-    if server and server in current['_overrides'] and item in current['_overrides'][server]:
-        res.extend(current['_overrides'][server][item])
-    if server and channel and (server, channel) in current['_overrides'] and item in current['_overrides'][server, channel]:
-        res.extend(current['_overrides'][server, channel][item])
+    if _has(item):
+        res.extend(_get(item))
+    if server and server in current['_overrides'] and _has(current['_overrides'][server]):
+        res.extend(_get(item, current['_overrides'][server]))
+    if server and channel and (server, channel) in current['_overrides'] and _has(item, current['_overrides'][server, channel]):
+        res.extend(_get(item, current['_overrides'][server, channel]))
     return res
 
 def dict(item, server=None, channel=None):
     global current
     res = {}
 
-    if item in current:
-        res.update(current[item])
-    if server and server in current['_overrides'] and item in current['_overrides'][server]:
-        res.update(current['_overrides'][server][item])
-    if server and channel and (server, channel) in current['_overrides'] and item in current['_overrides'][server, channel]:
-        res.update(current['_overrides'][server, channel][item])
+    if _has(item):
+        res.update(_get(item))
+    if server and server in current['_overrides'] and _has(item, current['_overrides'][server]):
+        res.update(_get(item, current['_overrides'][server]))
+    if server and channel and (server, channel) in current['_overrides'] and _has(item, current['_overrides'][server, channel]):
+        res.update(_get(item, current['_overrides'][server, channel]))
     return res
 
 def set(item, value, server=None, channel=None):
     global current
+    parent = None
 
     if server:
         if channel:
@@ -94,9 +134,9 @@ def set(item, value, server=None, channel=None):
 
         if v not in current['_overrides']:
             current['_overrides'][v] = {}
-        current['_overrides'][v][item] = value
-    else:
-        current[item] = value
+        parent = current['_overrides'][v]
+
+    _set(item, value, parent)
 
 def delete(item, key, server=None, channel=None):
     global current
@@ -104,29 +144,39 @@ def delete(item, key, server=None, channel=None):
     v = get(item, server, channel)
 
     if isinstance(v, builtins.dict):
-        if server and channel and (server, channel) in current['_overrides'] and item in current['_overrides'][server, channel] and key in current['_overrides'][server, channel][item]:
-            del current['_overrides'][server, channel][item][key]
-        if server and server in current['_overrides'] and item in current['_overrides'][server] and key in current['_overrides'][server][item]:
-            del current['_overrides'][server][item][key]
-        if item in current and key in current[item]:
-            del current[item][key]
+        if server and channel and (server, channel) in current['_overrides'] and _has(item, current['_overrides'][server, channel]):
+            d = _get(item, current['_overrides'][server, channel])
+            if key in d:
+                del d[key]
+        if server and server in current['_overrides'] and _has(item, current['_overrides'][server]):
+            d = _get(item, current['_overrides'][server])
+            if key in d:
+                del d[key]
+        if _has(item):
+            d = _get(item)
+            if key in d:
+                del d[key]
 
     elif isinstance(v, (builtins.list, builtins.set)):
-        if server and channel and (server, channel) in current['_overrides'] and item in current['_overrides'][server, channel]:
-            while key in current['_overrides'][server, channel][item]:
-                current['_overrides'][server, channel][item].remove(key)
-        if server and server in current['_overrides'] and item in current['_overrides'][server]:
-            while key in current['_overrides'][server][item]:
-                current['_overrides'][server][item].remove(key)
-        if item in current:
-            while key in current[item]:
-                current[item].remove(key)
+        if server and channel and (server, channel) in current['_overrides'] and _has(item, current['_overrides'][server, channel]):
+            l = _get(item, current['_overrides'][server, channel])
+            while key in l:
+                l.remove(key)
+        if server and server in current['_overrides'] and _has(item, current['_overrides'][server]):
+            l = _get(item, current['_overrides'][server])
+            while key in l:
+                l.remove(key)
+        if _has(item):
+            l = _get(item)
+            while key in l:
+                l.remove(key)
 
     else:
         raise TypeError('Can\'t delete from type {t}.'.format(t=v.__class__.__name__))
 
 def add(item, value, server=None, channel=None):
     global current
+    parent = None
 
     if server:
         if channel:
@@ -136,16 +186,15 @@ def add(item, value, server=None, channel=None):
 
         if v not in current['_overrides']:
             current['_overrides'][v] = {}
-        if item not in current['_overrides'][v]:
-            current['_overrides'][v][item] = []
-        current['_overrides'][v][item].append(value)
-    else:
-        if item not in current:
-            current[item] = []
-        current[item].append(value)
+        parent = current['_overrides'][v]
+
+    if not _has(item, parent):
+        _set(item, [], parent)
+    _get(item, parent).append(value)
 
 def setitem(item, key, value, server=None, channel=None):
     global current
+    parent = None
 
     if server:
         if channel:
@@ -155,21 +204,18 @@ def setitem(item, key, value, server=None, channel=None):
 
         if v not in current['_overrides']:
             current['_overrides'][v] = {}
-        if item not in current['_overrides'][v]:
-            current['_overrides'][v][item] = {}
-        current['_overrides'][v][item][key] = value
-    else:
-        if not item not in current:
-            current[item] = {}
-        current[item][key] = value
+        parent = current['_overrides'][v]
 
+    if not _has(item, parent):
+        _set(item, {}, parent)
+    _get(item, parent)[key] = value
 
 def item(item, default):
     """ Ensure configuration item exists. Will initialize it to `default` if it doesn't. """
     global current
 
-    if not item in current:
-        current[item] = default
+    if not _has(item):
+        _set(item, default)
 
 def ensure_structure():
     """ Ensure a proper configuration structure is in place. """

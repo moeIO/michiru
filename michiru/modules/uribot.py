@@ -20,8 +20,8 @@ __desc__ = 'Gives URL information.'
 
 ## Configuration and constants.
 
-config.item('uribot_use_whitelist', False)
-config.item('uribot_whitelist', [])
+config.item('uribot.use_whitelist', False)
+config.item('uribot.whitelist', [])
 
 # Thanks Hitler, Obama and Daring Fireball.
 URI_REGEXP = re.compile(r"""(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))""")
@@ -201,12 +201,12 @@ def uri(bot, server, target, source, message, parsed, private, admin):
         matches = None
 
         # Use whitelist if we have to.
-        if config.get('uribot_use_whitelist', server, target):
+        if config.get('uribot.use_whitelist', server, target):
             components = urllib.parse.urlparse(uri)
             host = components.netloc.split(':', 1)[0]
 
             # Verify against whitelist.
-            for h in config.list('uribot_whitelist', server, target):
+            for h in config.list('uribot.whitelist', server, target):
                 if host.endswith(h):
                     break
             else:

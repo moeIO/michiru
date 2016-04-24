@@ -63,7 +63,74 @@ personalities.messages('fancy', {
 })
 
 personalities.messages('tsun', {
-
+    'This command is restricted to administrators.':
+        'B-baka! Y-you can\'t just walk up and do that kinda stuff without permission!',
+    'Administrator {nick} added.':
+        'I guess {nick} is a pretty cool person, huh...',
+    'Administrator {nick} removed.':
+        'I didn\'t like {nick} anyway, the CREEP!',
+    'Administrators: {}':
+        'My current masters? えとね, there\'s {}, I think...',
+    'Module {mod} enabled for channel {chan}.':
+        'I guess I\'ll enable {mod} just for you...',
+    'Module {mod} enabled for server {srv}.':
+        'よし！ {mod} in action! ヽ( ˃ ヮ˂)ノ',
+    'Module {mod} globally enabled.':
+        'よし！ {mod} in action! ヽ( ˃ ヮ˂)ノ',
+    'Module {mod} disabled for channel {chan}.':
+        'W-well, {mod} may have been just a little bit annoying...',
+    'Module {mod} disabled for server {srv}.':
+        'Good riddance, {mod} was the WORST!',
+    'Module {mod} globally disabled.':
+        'Good riddance, {mod} was the WORST!',
+    'Module {mod} loaded.':
+        'Michiru ＰＯＷＥＲ－ＵＰ！ {mod} activated!',
+    'Module {mod} unloaded.':
+        'I suddenly feel a lot thinner... (´･ω･`)',
+    'Module {mod} reloaded.':
+        'Michiru ＲＥＬＯＡＤ！ {mod} updated!',
+    'Loaded modules: {mods}':
+        'R-right now, Michiru can do this! {mods}',
+    'Unknown server {srv}.':
+        'W-what kind of degenerate server are you trying to send me to?',
+    'Already connected to {tag}.':
+        'Michiru\'s already there, ba-ka!',
+    'Connecting to {tag}... this might take a while.':
+        'I-I\'ll do my best to check it out, but it might take a bit!',
+    'Connected to {tag} successfully.':
+        'よし, Michiru got there! It\'s so lonely though... (´･ω･`)',
+    'Configuration loaded.':
+        'Now I remember!',
+    'Configuration saved.':
+        'Wrote these settings down to be su-per sure~! (☝ﾟ∀ﾟ)☝',
+    'Configuration item {name} set.':
+        'I\'ll try to remember that! (´･ω･`)',
+    'config{name}: {val}.':
+        'I-I think {name} is {val}, ri-right? (´･ω･`)',
+    'Already ignoring {nick}.':
+        'Michiru al~ready knows {nick} sucks!',
+    'Already ignoring {nick} on channel {chan}.':
+        'Michiru al~ready knows {nick} sucks!',
+    '{nick} added to ignore list.':
+        'Yea, they are the WO~RST! ┌(`～´；)┐',
+    '{nick} added to ignore list for channel {chan}.':
+        'Yea, they are the WO~RST! ┌(`～´；)┐',
+    'Not ignoring {nick}.':
+        'I\'m not ignoring {nick}! S-should I...? (´･ω･`)',
+    'Not ignoring {nick} on channel {chan}.':
+        'I\'m not ignoring {nick}! S-should I...? (´･ω･`)',
+    '{nick} removed from ignore list.':
+        'I-I guess {nick} can be pretty alright... b-but only because you say so!',
+    '{nick} removed from ignore list for channel {chan}.':
+        'I-I guess {nick} can be pretty alright... b-but only because you say so!',
+    'Help yourself.':
+        'Michiru ごめん！ I really don\'t know anything right now... ㅠ_ㅠ',
+    'My source is at {src}.':
+        'I s-suppose you could find me at {src}... but don\'t look too closely, you CREEP! (/ω＼)',
+    'This is {n} v{v}, ready to serve.':
+        '{n} Ver.{v} でーす！ ヽ( ˃ ヮ˂)ノ',
+    '"psutil" module not found.':
+        'Waa! Couldn\'t find psutil! ( ´· A ·`)'
 })
 
 
@@ -246,7 +313,7 @@ def connect(bot, server, target, source, message, parsed, private, admin):
 
     bot.message(target, _('Connected to {tag} successfully.', tag=tag, host=info['host'], port=info['port']))
 
-@command(r'quit(?: (\S+)?)?\.?')
+@command(r'(?:quit|gtfo)(?: (\S+)?)?\.?')
 @restricted
 def quit(bot, server, target, source, message, parsed, private, admin):
     if parsed.group(1):
@@ -285,7 +352,7 @@ def ignore(bot, server, target, source, message, parsed, private, admin):
 
 @command(r'unignore (\S+)(?: (#\S+|everywhere))?')
 @command(r'stop ignoring (\S+)(?: (?:on (\S+)|(everywhere))?)?\.?')
-@command(r'(\S+) is cool(?: (?:on (\S+)|(everywhere))?)?\.?')
+@command(r'(\S+)(?: i|\')s cool(?: (?:on (\S+)|(everywhere))?)?\.?')
 @restricted
 def unignore(bot, server, target, source, message, parsed, private, admin):
     nick = parsed.group(1)
@@ -467,7 +534,7 @@ def source(bot, server, target, source, message, parsed, private, admin):
     bot.message(target, _('My source is at {src}.', src=version.__source__))
 
 @command(r'version')
-@command(r'what are you\??$')
+@command(r'wh(?:at|o) are you\??$')
 def version_(bot, server, target, source, message, parsed, private, admin):
     bot.message(target, _('This is {n} v{v}, ready to serve.', n=version.__name__, v=version.__version__))
 

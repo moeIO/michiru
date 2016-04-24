@@ -32,6 +32,14 @@ db.table('_ignores', {
 })
 
 
+personalities.messages('tsun', {
+    'Error while executing [{mod}:{cmd}]: {err}':
+        'Waa~a! Couldn\'t execute {cmd}! {err} ( ´· A ·`)',
+    'Error while executing hooks for {event}: {err}':
+        'Waa~a! Couldn\'t spy on {event}! {err} ( ´· A ·`)'
+})
+
+
 bots = {}
 pool = pydle.ClientPool()
 
@@ -85,11 +93,11 @@ class IRCBot(pydle.Client):
         """ Remove ignore for user. """
         if chan:
             if not (who, chan) in self.michiru_ignores:
-                raise EnvironmentError(_('{nick} is not ignored in channel {chan}.', nick=nick, chan=chan))
+                raise EnvironmentError(_('Not ignoring {nick} on channel {chan}.', nick=who, chan=chan))
             self.michiru_ignores.remove((who, chan))
         else:
             if not who in self.michiru_ignores:
-                raise EnvironmentError(_('{nick} is not ignored.', nick=nick))
+                raise EnvironmentError(_('Not ignoring {nick}.', nick=who))
             self.michiru_ignores.remove(who)
 
         # Remove ignore.
@@ -281,7 +289,7 @@ class IRCBot(pydle.Client):
                     try:
                         cmd(self, server, target, by, message, matched_message, private=private, admin=admin)
                     except Exception as e:
-                        self.notice(source, _('Error while executing [{mod}:{cmd}]: {err}', mod=module, cmd=cmd.__name__, err=e))
+                        self.message(source, _('Error while executing [{mod}:{cmd}]: {err}', mod=module, cmd=cmd.__name__, err=e))
                         traceback.print_exc()
             elif matched_nick:
                 matched_message = matcher.match(parsed_message)
@@ -290,14 +298,14 @@ class IRCBot(pydle.Client):
                     try:
                         cmd(self, server, target, by, parsed_message, matched_message, private=private, admin=admin)
                     except Exception as e:
-                        self.notice(source, _('Error while executing [{mod}:{cmd}]: {err}', mod=module, cmd=cmd.__name__, err=e))
+                        self.message(source, _('Error while executing [{mod}:{cmd}]: {err}', mod=module, cmd=cmd.__name__, err=e))
                         traceback.print_exc()
 
         # And execute hooks.
         try:
             events.emit('irc.message', self, server, target, by, message, private, admin)
         except Exception as e:
-            self.notice(source, _('Error while executing hooks for {event}: {err}', event='irc.msg', err=e))
+            self.message(source, _('Error while executing hooks for {event}: {err}', event='irc.msg', err=e))
 
     def on_ctcp_version(self, by, target, contents):
         if self.ignored(by, target):

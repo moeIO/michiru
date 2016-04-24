@@ -28,6 +28,13 @@ db.table('reminders', {
     'time': db.DATETIME
 })
 
+personalities.messages('tsun', {
+    'Reminder added.':
+        'よし！ I\'ll remind {to} about that on {b}{when}{/b}!',
+    '{targ}: <{src}> {msg}':
+        'Oh, {targ}-san! {b}{src}{/b}-san wanted me to remind you that {b}{msg}{/b}!'
+})
+
 
 ## Commands and hooks.
 
