@@ -2,6 +2,7 @@
 import os
 import sys
 import io
+import math
 import functools
 import pydle
 
@@ -541,6 +542,7 @@ def version_(bot, server, target, source, message, parsed, private, admin):
 
 @command(r'stats')
 @command(r'(?:what(?: kind of)?|how many) resources are you using\??')
+@command(r'how bloated are you\??')
 def stats(bot, server, target, source, message, parsed, private, admin):
     try:
         import psutil
@@ -548,15 +550,12 @@ def stats(bot, server, target, source, message, parsed, private, admin):
         raise EnvironmentError(_('"psutil" module not found.'))
 
     # Helper function. Turn amount into readable string including SI prefix.
-    def si_ify(bytes):
-        orders = [ 'k', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y' ]
-        for i, order in enumerate(reversed(orders)):
-            base = 2**(10*(len(orders)-i))
-            if bytes > base:
-                n = bytes / base
-                return '{n}{u}iB'.format(n=round(n, 2), u=order)
-
-        return '{n}B'.format(n=bytes)
+    def si_ify(n):
+        orders = ['k', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y']
+        order = math.floor(math.log(n, 2) / 10)
+        if order:
+            return '{n}{u}iB'.format(n=round(n, 2), u=order - 1)
+        return '{n}B'.format(n=n)
 
     # And dump info.
     proc = psutil.Process(os.getpid())

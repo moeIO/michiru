@@ -88,38 +88,33 @@ def _set(name, value, parent=None):
 
     parent[name] = value
 
+def _overrides(item, server=None, channel=None):
+    res = []
+    if _has(item):
+        res.append(current)
+    if server and server in current['_overrides'] and _has(item, current['_overrides'][server]):
+        res.append(current['_overrides'][server])
+    if server and channel and (server, channel) in current['_overrides'] and _has(item, current['_overrides'][server, channel]):
+        res.append(current['_overrides'][server, channel])
+    return res
+
 
 def get(item, server=None, channel=None):
-    global current
+    for parent in reversed(_overrides(item, server, channel)):
+        return _get(item, parent)
 
-    if server and channel and (server, channel) in current['_overrides'] and _has(item, current['_overrides'][server, channel]):
-        return _get(item, current['_overrides'][server, channel])
-    elif server and server in current['_overrides'] and _has(item, current['_overrides'][server]):
-        return _get(item, current['_overrides'][server])
     return _get(item)
 
 def list(item, server=None, channel=None):
-    global current
     res = []
-
-    if _has(item):
-        res.extend(_get(item))
-    if server and server in current['_overrides'] and _has(current['_overrides'][server]):
-        res.extend(_get(item, current['_overrides'][server]))
-    if server and channel and (server, channel) in current['_overrides'] and _has(item, current['_overrides'][server, channel]):
-        res.extend(_get(item, current['_overrides'][server, channel]))
+    for parent in _overrides(item, server, channel):
+        res.extend(_get(item, parent))
     return res
 
 def dict(item, server=None, channel=None):
-    global current
     res = {}
-
-    if _has(item):
-        res.update(_get(item))
-    if server and server in current['_overrides'] and _has(item, current['_overrides'][server]):
-        res.update(_get(item, current['_overrides'][server]))
-    if server and channel and (server, channel) in current['_overrides'] and _has(item, current['_overrides'][server, channel]):
-        res.update(_get(item, current['_overrides'][server, channel]))
+    for parent in _overrides(item, server, channel):
+        res.update(_get(item, parent))
     return res
 
 def set(item, value, server=None, channel=None):
@@ -142,35 +137,16 @@ def delete(item, key, server=None, channel=None):
     global current
 
     v = get(item, server, channel)
-
     if isinstance(v, builtins.dict):
-        if server and channel and (server, channel) in current['_overrides'] and _has(item, current['_overrides'][server, channel]):
-            d = _get(item, current['_overrides'][server, channel])
+        for parent in _overrides(item, server, channel):
+            d = _get(item, parent)
             if key in d:
                 del d[key]
-        if server and server in current['_overrides'] and _has(item, current['_overrides'][server]):
-            d = _get(item, current['_overrides'][server])
-            if key in d:
-                del d[key]
-        if _has(item):
-            d = _get(item)
-            if key in d:
-                del d[key]
-
     elif isinstance(v, (builtins.list, builtins.set)):
-        if server and channel and (server, channel) in current['_overrides'] and _has(item, current['_overrides'][server, channel]):
-            l = _get(item, current['_overrides'][server, channel])
+        for parent in _overrides(item, server, channel):
+            l = _get(item, parent)
             while key in l:
                 l.remove(key)
-        if server and server in current['_overrides'] and _has(item, current['_overrides'][server]):
-            l = _get(item, current['_overrides'][server])
-            while key in l:
-                l.remove(key)
-        if _has(item):
-            l = _get(item)
-            while key in l:
-                l.remove(key)
-
     else:
         raise TypeError('Can\'t delete from type {t}.'.format(t=v.__class__.__name__))
 
