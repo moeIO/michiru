@@ -333,16 +333,16 @@ def connect(bots, pool, tag, info):
     bots[tag] = IRCBot(
         tag,
         info,
-        encoding=info.get('encoding', 'UTF-8'),
         nickname=info['nickname'],
         username=info.get('username'),
         realname=info.get('realname'),
     )
     pool.connect(bots[tag],
         hostname=info['host'],
-        port=info.get('port', 6697 if info.get('tls', False) else 6667),
+        port=info.get('port'),
         tls=info.get('tls', False),
-        tls_verify=info.get('tls_verify', False)
+        tls_verify=info.get('tls_verify', False),
+        encoding=info.get('encoding', 'UTF-8')
     )
 
 def setup(bots, pool):
