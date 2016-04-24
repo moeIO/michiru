@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Michiru's IRC core.
 import re
 import time

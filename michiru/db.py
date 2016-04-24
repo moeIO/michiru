@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Database stuff for modules to store their stuff in.
 import time
 import datetime

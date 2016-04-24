@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Module loading code.
 import sys
 import os
@@ -12,8 +11,7 @@ from . import config, \
 _ = personalities.localize
 
 config.item('modules', [])
-config.item('module_overrides', {})
-config.item('module_individual_overrides', {})
+
 
 __path__ = [
     # User modules.

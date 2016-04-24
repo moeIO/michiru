@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Michiru version information.
 
 __name__ = 'Michiru'

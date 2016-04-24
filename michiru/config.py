@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # Load and parse configuration.
 import builtins
 import sys
@@ -98,11 +97,22 @@ def _overrides(item, server=None, channel=None):
         res.append(current['_overrides'][server, channel])
     return res
 
+def _override(server, channel):
+    if server:
+        if channel:
+            v = server, channel
+        else:
+            v = server
+
+        if v not in current['_overrides']:
+            current['_overrides'][v] = {}
+        return current['_overrides'][v]
+    return current
+
 
 def get(item, server=None, channel=None):
     for parent in reversed(_overrides(item, server, channel)):
         return _get(item, parent)
-
     return _get(item)
 
 def list(item, server=None, channel=None):
@@ -118,24 +128,10 @@ def dict(item, server=None, channel=None):
     return res
 
 def set(item, value, server=None, channel=None):
-    global current
-    parent = None
-
-    if server:
-        if channel:
-            v = server, channel
-        else:
-            v = server
-
-        if v not in current['_overrides']:
-            current['_overrides'][v] = {}
-        parent = current['_overrides'][v]
-
+    parent = _override(server, channel)
     _set(item, value, parent)
 
 def delete(item, key, server=None, channel=None):
-    global current
-
     v = get(item, server, channel)
     if isinstance(v, builtins.dict):
         for parent in _overrides(item, server, channel):
@@ -151,45 +147,19 @@ def delete(item, key, server=None, channel=None):
         raise TypeError('Can\'t delete from type {t}.'.format(t=v.__class__.__name__))
 
 def add(item, value, server=None, channel=None):
-    global current
-    parent = None
-
-    if server:
-        if channel:
-            v = server, channel
-        else:
-            v = server
-
-        if v not in current['_overrides']:
-            current['_overrides'][v] = {}
-        parent = current['_overrides'][v]
-
+    parent = _override(server, channel)
     if not _has(item, parent):
         _set(item, [], parent)
     _get(item, parent).append(value)
 
 def setitem(item, key, value, server=None, channel=None):
-    global current
-    parent = None
-
-    if server:
-        if channel:
-            v = server, channel
-        else:
-            v = server
-
-        if v not in current['_overrides']:
-            current['_overrides'][v] = {}
-        parent = current['_overrides'][v]
-
+    parent = _override(server, channel)
     if not _has(item, parent):
         _set(item, {}, parent)
     _get(item, parent)[key] = value
 
 def item(item, default):
     """ Ensure configuration item exists. Will initialize it to `default` if it doesn't. """
-    global current
-
     if not _has(item):
         _set(item, default)
 

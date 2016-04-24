@@ -13,13 +13,9 @@ servers = {
     }
 }
 
-# Enable/disable overrides for modules.
-module_overrides = {}
-module_individual_overrides = {}
-
 # Miscellaneous stuff.
 personality = 'plain'
 command_prefixes = [':']
 
 # Module options.
-knowitall_wolfram_api_key = None
+knowitall = {'wolfram_api_key': None}
