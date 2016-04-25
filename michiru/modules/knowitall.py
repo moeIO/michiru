@@ -60,15 +60,7 @@ def raw_whatis(bot, server, target, source, message, parsed, private, admin):
     if addressed.lower() != bot.nickname.lower():
         return
 
-    # Obvious edge cases.
-    if wanted == bot.nickname:
-        bot.message(target, _('Me.'))
-        return
-    elif wanted == source:
-        bot.message(target, _('You.'))
-        return
-
-    definition = get_definition(wanted, server=server, channel=target)
+    definition = get_definition(bot, wanted, source=source, server=server, channel=target)
     bot.message(target, _('{factoid}: {definition}', source=source, factoid=wanted, definition=definition))
 
 @command('(?:what|who|where|how|why)(?: am| is|\'s|are|\'re) (?:an? |the )?(.+)\??$')
@@ -76,22 +68,13 @@ def raw_whatis(bot, server, target, source, message, parsed, private, admin):
 @command('define (.+)\.?')
 def whatis(bot, server, target, source, message, parsed, private, admin):
     wanted = parsed.group(1).strip()
-
-    # Obvious edge cases.
-    if wanted == bot.nickname:
-        bot.message(target, _('Me.'))
-        return
-    elif wanted == source:
-        bot.message(target, _('You.'))
-        return
-
-    definition = get_definition(wanted, server=server, channel=target)
+    definition = get_definition(bot, wanted, source=source, server=server, channel=target)
     bot.message(target, _('{factoid}: {definition}', source=source, factoid=wanted, definition=definition))
 
 @command('calculate (.+)')
 def calculate(bot, server, target, source, message, parsed, private, admin):
     wanted = parsed.group(1).strip()
-    definition = get_definition(wanted, sources=['wolframalpha'], server=server, channel=target)
+    definition = get_definition(bot, wanted, sources=['wolframalpha'], source=source, server=server, channel=target)
     bot.message(target, _('{factoid}: {definition}', source=source, factoid=wanted, definition=definition))
 
 @command(r'(\S+) is (.*[^\?])$')
@@ -121,12 +104,19 @@ def undefine(bot, server, target, source, message, parsed, private, admin):
 
 ## Utility functions.
 
-def get_definition(wanted, sources=['factoids', 'urbandictionary', 'wolframalpha'], server=None, channel=None):
+def get_definition(bot, wanted, sources=['builtin', 'factoids', 'urbandictionary', 'wolframalpha'], source=None, server=None, channel=None):
     """ Try to define something through several sources. """
     definition = None
 
-    # Look up factoids first.
-    if 'factoids' in sources:
+    # Builtin stuff.
+    if not definition and 'builtin' in sources:
+        if wanted == bot.nickname:
+            definition = _('Me.')
+        elif wanted == source:
+            definition = _('You.')
+
+    # User-defined factoids.
+    if not definition and 'factoids' in sources:
         query = db.from_('factoids').where('factoid', wanted).single('definition')
         if query:
             definition = query['definition']
