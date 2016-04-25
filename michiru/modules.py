@@ -122,7 +122,10 @@ def load(name, soft=True, reload=False):
 
     # Decide if the module is already loaded and if we need to unload it.
     if reload:
-        unload(name, soft=False)
+        try:
+            unload(name, soft=False)
+        except EnvironmentError:
+            pass
     if not soft and name in modules.keys():
         raise EnvironmentError(_('Module {mod} already loaded.', mod=name))
 
