@@ -56,12 +56,7 @@ class IRCBot(pydle.Client):
         super()._reset_attributes()
         self.michiru_history = {}
         self.michiru_ignores = []
-
-        # Compile regexp we'll use to see if messages are intended for us.
-        self.michiru_message_pattern = re.compile('(?:{nick}[:,;]\s*|{prefixes})(.+)'.format(
-            nick=self.michiru_config['nickname'],
-            prefixes='[{chars}]'.format(chars=''.join(re.escape(x) for x in config.get('command_prefixes', server=self.michiru_server_tag)))
-        ), re.IGNORECASE)
+        self.michiru_message_pattern = None
 
         # Fill ignore list from database.
         res = db.from_('_ignores').where('server', self.michiru_server_tag).get('channel', 'nickname')
@@ -177,6 +172,7 @@ class IRCBot(pydle.Client):
     ## Event handlers.
 
     def on_connect(self):
+        super().on_connect()
         # Authenticate if possible.
         if self.michiru_config.get('nickserv_password'):
             self.message('NickServ', 'identify {}'.format(self.michiru_config['nickserv_password']))
@@ -198,6 +194,7 @@ class IRCBot(pydle.Client):
         events.emit('irc.connect', self, self.michiru_server_tag)
 
     def on_join(self, channel, user):
+        super().on_join(channel, user)
         if self.ignored(user, channel):
             return
         # Execute hook.
@@ -205,6 +202,7 @@ class IRCBot(pydle.Client):
         events.emit('irc.join', self, self.michiru_server_tag, channel, user)
 
     def on_part(self, channel, user, reason=None):
+        super().on_part(channel, user, reason)
         if self.ignored(user, channel):
             return
         # Execute hook.
@@ -212,6 +210,7 @@ class IRCBot(pydle.Client):
         events.emit('irc.part', self, self.michiru_server_tag, channel, user, reason)
 
     def on_quit(self, user, reason=None):
+        super().on_quit(user, reason)
         if self.ignored(user):
             return
         # Execute hook.
@@ -219,6 +218,7 @@ class IRCBot(pydle.Client):
         events.emit('irc.disconnect', self, self.michiru_server_tag, user, reason)
 
     def on_kick(self, channel, target, by, reason):
+        super().on_kick(channel, target, by, reason)
         if self.ignored(target, channel) or self.ignored(by, channel):
             return
         # Execute hook.
@@ -226,6 +226,7 @@ class IRCBot(pydle.Client):
         events.emit('irc.kick', self, self.michiru_server_tag, channel, target, by, reason)
 
     def on_invite(self, channel, by):
+        super().on_invite(channel, by)
         if self.ignored(by, channel):
             return
         # Execute hook.
@@ -233,15 +234,24 @@ class IRCBot(pydle.Client):
         events.emit('irc.invite', self, self.michiru_server_tag, channel, by)
 
     def on_nick_change(self, old, new):
+        super().on_nick_change(old, new)
         if self.ignored(old):
             self.unignore(old)
             self.ignore(new)
             return
+        if self.nickname == new:
+            self.michiru_message_pattern = re.compile('(?:{nick}[:,;]\s*|{prefixes})(.+)'.format(
+                nick=self.nickname,
+                prefixes='[{chars}]'.format(chars=''.join(re.escape(x) for x in config.get('command_prefixes', server=self.michiru_server_tag)))
+            ), re.IGNORECASE)
+
         # Execute hook.
         personalities.set_current(self.michiru_server_tag, None)
         events.emit('irc.nickchange', self, self.michiru_server_tag, old, new)
 
+    @pydle.coroutine
     def on_notice(self, target, by, message):
+        super().on_notice(target, by, message)
         if self.ignored(by, target):
             return
         private = not self.is_channel(target)
@@ -251,6 +261,7 @@ class IRCBot(pydle.Client):
         events.emit('irc.notice', self, self.michiru_server_tag, target, by, message, private, admin)
 
     def on_topic_change(self, channel, topic, setter):
+        super().on_topic_change(channel, topic, setter)
         if self.ignored(setter, channel):
             return
         # Execute hook.
@@ -259,6 +270,7 @@ class IRCBot(pydle.Client):
 
     @pydle.coroutine
     def on_message(self, target, by, message):
+        super().on_message(target, by, message)
         if self.ignored(by, target):
             return
         private = not self.is_channel(target)
@@ -322,6 +334,7 @@ class IRCBot(pydle.Client):
         self.ctcp_reply(by, 'USERINFO', '{user} ({real})'.format(user=self.username, real=self.realname))
 
     def on_ctcp(self, by, target, what, contents):
+        super().on_ctcp(by, target, what, contents)
         if self.ignored(by, target):
             return
         personalities.set_current(self.michiru_server_tag, None)
