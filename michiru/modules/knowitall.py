@@ -69,10 +69,13 @@ def calculate(bot, server, target, source, message, parsed, private, admin):
     definition = get_definition(wanted, sources=['wolframalpha'], server=server, channel=target)
     bot.message(target, _('{what}: {definition}', what=wanted, definition=definition))
 
-@command(r'(\S+) is (.*)')
+@command(r'(\S+) is (.*[^\?])$')
 def define(bot, server, target, source, message, parsed, private, admin):
     factoid = parsed.group(1)
     definition = parsed.group(2).strip()
+
+    if factoid in ('what', 'who', 'where', 'how', 'why'):
+        return
 
     db.from_('factoids').where('factoid', factoid).delete()
     db.to('factoids').add({
