@@ -93,7 +93,7 @@ personalities.messages('tsun', {
     'Loaded modules: {mods}':
         'R-right now, Michiru can do this! {mods}',
     'Unknown server {srv}.':
-        'W-what kind of degenerate server are you trying to send me to?',
+        'Michiru doesn\'t know that server... (´･ω･`)',
     'Already connected to {tag}.':
         'Michiru\'s already there, ba-ka!',
     'Connecting to {tag}... this might take a while.':
@@ -378,6 +378,7 @@ def unignore(bot, server, target, source, message, parsed, private, admin):
 ## Configuration commands.
 
 @command(r'loadconf')
+@command(r'remember how I told you to behave\??')
 @restricted
 def loadconf(bot, server, target, source, message, parsed, private, admin):
     config.load()
