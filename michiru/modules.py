@@ -132,11 +132,18 @@ def load(name, soft=True, reload=False):
     # Attempt to locate the module.
     if not soft or name not in modules.keys():
         loadpath = None
+        modpath = path.join(*name.split('.'))
         for path_ in __path__:
-            target = path.join(path_, 'modules', name + '.py')
+            target = path.join(path_, 'modules', modpath + '.py')
             if path.isfile(target) and os.access(target, os.R_OK):
                 loadpath = target
                 break
+            target = path.join(path_, 'modules', modpath)
+            if path.isdir(target):
+                target = path.join(target, '__init__.py')
+                if path.isfile(target) and os.access(target, os.R_OK)
+                    loadpath = target
+                    break
         else:
             # Not found.
             raise EnvironmentError(_('Module {mod} does not exist.', mod=name))
