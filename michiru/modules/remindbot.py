@@ -1,7 +1,7 @@
 # Reminder bot.
 from datetime import datetime, timedelta
 import re
-import threading
+import functools
 
 from michiru import db, personalities
 from michiru.modules import command, hook
@@ -30,7 +30,7 @@ db.table('reminders', {
 
 personalities.messages('tsun', {
     'Reminder added.':
-        'よし！ I\'ll remind {to} about that on {b}{when}{/b}!',
+        'よし！ I\'ll remind {to} about that {b}{when}{/b}!',
     '{targ}: <{src}> {msg}':
         'Oh, {targ}-san! {b}{src}{/b}-san wanted me to remind you that {b}{msg}{/b}!'
 })
@@ -69,8 +69,10 @@ def remind(bot, server, target, source, message, parsed, private, admin):
     # If this is a timed reminder, set a timer.
     if when:
         timeout = (when - datetime.now()).total_seconds()
-        timer = threading.Timer(timeout, do_remind, [bot, id])
-        timer.start()
+        bot.eventloop.schedule_in(timeout, functools.partial(do_remind, bot, id))
+        when = _('on {when}'.format(when=when))
+    else:
+        when = _('A.S.A.P.')
 
     bot.message(target, _('Reminder added.', to=targ, when=when))
 
