@@ -7,7 +7,7 @@ from michiru import config, modules
 
 ## Module information.
 
-__name__ = 'uribot_soundcloud'
+__name__ = 'uribot.soundcloud'
 __author__ = 'Shiz'
 __license__ = 'WTFPL'
 __desc__ = 'Gives URL information for SoundCloud links.'
@@ -31,7 +31,7 @@ def uri_soundcloud(contents, matches):
     return 'SoundCloud: {}'.format(song['user']['username']), title, meta
 
 def load():
-    uribot = modules.get('uribot')
+    from michiru.modules import uribot
     uribot.URI_HANDLERS[URI_REGEXP] = {
         'enabled': lambda: config.get('uribot.api.soundcloud'),
         'handler': uri_soundcloud,
@@ -39,5 +39,5 @@ def load():
     }
 
 def unload():
-    uribot = modules.get('uribot')
+    from michiru.modules import uribot
     del uribot.URI_HANDLERS[URI_REGEXP]

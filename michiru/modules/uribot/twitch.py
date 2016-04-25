@@ -7,7 +7,7 @@ from michiru import config, modules
 
 ## Module information.
 
-__name__ = 'uribot_twitch'
+__name__ = 'uribot.twitch'
 __author__ = 'Shiz'
 __license__ = 'WTFPL'
 __desc__ = 'Gives URL information for Twitch links.'
@@ -31,7 +31,7 @@ def uri_twitch(contents, matches):
     return 'Twitch: {}'.format(channel['display_name']), title, game
 
 def load():
-    uribot = modules.get('uribot')
+    from michiru.modules import uribot
     uribot.URI_HANDLERS[URI_REGEXP] = {
         'enabled': lambda: config.get('uribot.api.twitch'),
         'handler': uri_twitch,
@@ -43,5 +43,5 @@ def load():
     }
 
 def unload():
-    uribot = modules.get('uribot')
+    from michiru.modules import uribot
     del uribot.URI_HANDLERS[URI_REGEXP]

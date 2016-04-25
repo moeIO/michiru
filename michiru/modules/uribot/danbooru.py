@@ -7,7 +7,7 @@ from michiru import modules
 
 ## Module information.
 
-__name__ = 'uribot_danbooru'
+__name__ = 'uribot.danbooru'
 __author__ = 'Shiz'
 __license__ = 'WTFPL'
 __desc__ = 'Gives URL information for Danbooru links.'
@@ -29,12 +29,12 @@ def uri_danbooru(contents, matches):
     return 'Danbooru: {}'.format(', '.join(artists)), url, ', '.join(tags)
 
 def load():
-    uribot = modules.get('uribot')
+    from michiru.modules import uribot
     uribot.URI_HANDLERS[URI_REGEXP] = {
         'handler': uri_danbooru,
         'replacement': r'https://danbooru.donmai.us/posts/\1.json'
     }
 
 def unload():
-    uribot = modules.get('uribot')
+    from michiru.modules import uribot
     del uribot.URI_HANDLERS[URI_REGEXP]

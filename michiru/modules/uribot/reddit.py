@@ -7,7 +7,7 @@ from michiru import modules
 
 ## Module information.
 
-__name__ = 'uribot_reddit'
+__name__ = 'uribot.reddit'
 __author__ = 'Shiz'
 __license__ = 'WTFPL'
 __desc__ = 'Gives URL information for Reddit links.'
@@ -45,12 +45,12 @@ def uri_reddit(contents, matches):
     return 'Reddit: /r/{}'.format(subreddit), title, meta
 
 def load():
-    uribot = modules.get('uribot')
+    from michiru.modules import uribot
     uribot.URI_HANDLERS[URI_REGEXP] = {
         'handler': uri_reddit,
         'replacement': r'\1.json'
     }
 
 def unload():
-    uribot = modules.get('uribot')
+    from michiru.modules import uribot
     del uribot.URI_HANDLERS[URI_REGEXP]

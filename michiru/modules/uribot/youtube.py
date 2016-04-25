@@ -8,7 +8,7 @@ from michiru import config, modules
 
 ## Module information.
 
-__name__ = 'uribot_youtube'
+__name__ = 'uribot.youtube'
 __author__ = 'Shiz'
 __license__ = 'WTFPL'
 __desc__ = 'Gives URL information for YouTube links.'
@@ -32,7 +32,7 @@ def uri_youtube(contents, matches):
     return 'YouTube: {}'.format(info['channelTitle']), info['title'], meta
 
 def load():
-    uribot = modules.get('uribot')
+    from michiru.modules import uribot
     uribot.URI_HANDLERS[URI_REGEXP] = {
         'enabled': lambda: config.get('uribot.api.youtube'),
         'handler': uri_youtube,
@@ -40,5 +40,5 @@ def load():
     }
 
 def unload():
-    uribot = modules.get('uribot')
+    from michiru.modules import uribot
     del uribot.URI_HANDLERS[URI_REGEXP]

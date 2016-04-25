@@ -8,7 +8,7 @@ from michiru import modules
 
 ## Module information.
 
-__name__ = 'uribot_4chan'
+__name__ = 'uribot.fourchan'
 __author__ = 'Shiz'
 __license__ = 'WTFPL'
 __desc__ = 'Gives URL information for 4chan links.'
@@ -76,12 +76,12 @@ def uri_4chan(contents, matches):
     return type, title, meta
 
 def load():
-    uribot = modules.get('uribot')
+    from michiru.modules import uribot
     uribot.URI_HANDLERS[URI_REGEXP] = {
         'handler': uri_4chan,
         'replacement': r'https://api.4chan.org/\1/res/\2.json'
     }
 
 def unload():
-    uribot = modules.get('uribot')
+    from michiru.modules import uribot
     del uribot.URI_HANDLERS[URI_REGEXP]
