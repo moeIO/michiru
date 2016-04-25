@@ -1,4 +1,5 @@
 # Event bus.
+import traceback
 
 hooks = {}
 
@@ -20,5 +21,4 @@ def emit(event, *args, **kwargs):
             try:
                 hook(*args, **kwargs)
             except:
-                import traceback
                 traceback.print_exc()
