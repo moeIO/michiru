@@ -22,9 +22,9 @@ URI_REGEXP = re.compile(r'^https?://boards\.4chan\.org/([a-z0-9]+)/thread/([0-9]
 def uri_4chan(contents, matches):
     """ Extract 4chan thread information. """
     thread = json.loads(contents)
-    wanted = None
 
     # Check if we want to actually have a linked post instead of the OP.
+    wanted = None
     if matches.group(3):
         try:
             wanted = int(matches.group(3))
@@ -33,21 +33,20 @@ def uri_4chan(contents, matches):
 
     title = None
     comment = None
-    # We want a given number.
+    # We want a given post: get its contents.
     if wanted:
         for post in thread['posts']:
             if post['no'] == wanted:
                 # Found the post!
                 comment = post['com']
-
-    # We want the OP.
+    # We want just the thread: try to use thread title or OP contents.
     if not comment:
         op = thread['posts'][0]
         if 'sub' in op:
             # Use thread title as URL title.
             title = op['sub']
         else:
-            comment = post['com']
+            comment = op['com']
 
     # Build title from comment.
     if not title and comment:
