@@ -40,9 +40,7 @@ def join(bot, server, channel, who):
 
         # Direct kick?
         if method == 'direct':
-            mask = yield bot.whois(who)
-            bot.set_mode(channel, '+b *!*@{mask}'.format(mask=mask['hostname']))
-            bot.kick(channel, who, message)
+            bot.kickban(channel, who, reason=message)
         # Or kick-by-proxy?
         elif method == 'proxy':
             proxy = config.get('gatekeeper.ban.proxy', server, channel)
