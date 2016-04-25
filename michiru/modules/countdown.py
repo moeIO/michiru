@@ -66,7 +66,7 @@ def countdown(bot, server, target, source, message, parsed, private, admin):
         'server': server,
         'channel': target,
         'people': people,
-        'count': parsed.group('count') or 5,
+        'count': max(0, min(10, parsed.group('count') or 5)),
         'message': (parsed.group('msg') or 'Go').encode('utf-8')
     })
     check_countdown(bot, server, target)
