@@ -144,27 +144,28 @@ def load(name, soft=True, reload=False):
             # I love capturing variables.
             cmds = _commands
             hks = _hooks
-            mld = module.load
-            muld = module.unload
+            module_load = module.load
+            module_unload = module.unload
 
             # And local functions.
-            def ld():
+            @functools.wraps(module_load)
+            def overridden_load():
                 for pattern, cmd, bare, case_sensitive in cmds:
                     register_command(name, pattern, cmd, bare, case_sensitive)
                 for event, cmd in hks:
                     events.register_hook(event, cmd)
-                return mld()
+                return module_load()
 
-            def uld():
+            @functools.wraps(module_unload)
+            def overridden_unload():
                 for pattern, cmd, bare, case_sensitive in cmds:
                     unregister_command(name, pattern, cmd, bare, case_sensitive)
                 for event, cmd in hks:
                     events.unregister_hook(event, cmd)
+                return module_unload()
 
-                return muld()
-
-            module.load = ld
-            module.unload = uld
+            module.load = overridden_load
+            module.unload = overridden_unload
             _commands = []
             _hooks = []
 

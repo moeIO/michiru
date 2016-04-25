@@ -5,7 +5,6 @@ from . import config
 
 parser = argparse.ArgumentParser(description='Yet another IRC bot', prog='michiru')
 parser.add_argument('-c', '--config-dir', help='Configuration directory.')
-
 args = parser.parse_args()
 
 # Load config.
