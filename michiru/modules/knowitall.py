@@ -40,7 +40,9 @@ personalities.messages('tsun', {
     'I\'ll keep it in mind for next time.':
         'S-stop bothering me with these weird things!',
     '{what} defined.':
-        'gotcha!'
+        'gotcha!',
+    '{what}: {definition}':
+        '{what} is {definition}'
 })
 
 
