@@ -34,34 +34,35 @@ _hooks = []
 
 ## Commands.
 
-def register_command(name, pattern, cmd, bare=False, case_sensitive=False):
+def register_command(name, pattern, cmd, bare=False, case_sensitive=False, fallback=False):
     """ Register command. """
     global commands
 
     # Check if command is already registered.
     pattern = re.compile(pattern, re.IGNORECASE | re.UNICODE if not case_sensitive else re.UNICODE)
-    if (name, pattern, cmd, bare) in commands:
+    if (name, pattern, cmd, bare, fallback) in commands:
         raise EnvironmentError(_('Command {cmd} already registered.', cmd=cmd.__qualname__))
 
-    commands.append((name, pattern, cmd, bare))
+    commands.append((name, pattern, cmd, bare, fallback))
 
-def unregister_command(name, pattern, cmd, bare=False, case_sensitive=False):
+def unregister_command(name, pattern, cmd, bare=False, case_sensitive=False, fallback=False):
     """ Unregister command. """
     global commands
 
     # Check if command is registered.
     pattern = re.compile(pattern, re.IGNORECASE | re.UNICODE if not case_sensitive else re.UNICODE)
-    if (name, pattern, cmd, bare) not in commands:
+    if (name, pattern, cmd, bare, fallback) not in commands:
         raise EnvironmentError(_('Command {cmd} not registered.', cmd=cmd.__qualname__))
 
-    commands.remove((name, pattern, cmd, bare))
+    commands.remove((name, pattern, cmd, bare, fallback))
 
 def commands_for(server, channel):
     """ Get all enabled commands for given server and channel. """
     enabledcmds = []
+    fallbackcmds = []
 
     overrides = config.dict('modules', server, channel)
-    for name, pattern, cmd, bare in commands:
+    for name, pattern, cmd, bare, fallback in commands:
         if not name in modules.keys():
             continue
 
@@ -73,9 +74,12 @@ def commands_for(server, channel):
 
         if enabled:
             # Yay, an enabled command.
-            enabledcmds.append((name, pattern, cmd, bare))
+            if fallback:
+                fallbackcmds.append((name, pattern, cmd, bare, fallback))
+            else:
+                enabledcmds.append((name, pattern, cmd, bare, fallback))
 
-    return enabledcmds
+    return enabledcmds + fallbackcmds
 
 
 ## Module enabling/disabling.
@@ -91,12 +95,12 @@ def disable(name, server=None, channel=None):
 
 ## Decorators.
 
-def command(pattern, bare=False, case_sensitive=False):
+def command(pattern, bare=False, case_sensitive=False, fallback=False):
     """ Decorator a module can use for commands. """
     global _commands
 
     def inner(func):
-        _commands.append((pattern, func, bare, case_sensitive))
+        _commands.append((pattern, func, bare, case_sensitive, fallback))
         return func
     return inner
 
@@ -150,16 +154,16 @@ def load(name, soft=True, reload=False):
             # And local functions.
             @functools.wraps(module_load)
             def overridden_load():
-                for pattern, cmd, bare, case_sensitive in cmds:
-                    register_command(name, pattern, cmd, bare, case_sensitive)
+                for pattern, cmd, bare, case_sensitive, fallback in cmds:
+                    register_command(name, pattern, cmd, bare, case_sensitive, fallback)
                 for event, cmd in hks:
                     events.register_hook(event, cmd)
                 return module_load()
 
             @functools.wraps(module_unload)
             def overridden_unload():
-                for pattern, cmd, bare, case_sensitive in cmds:
-                    unregister_command(name, pattern, cmd, bare, case_sensitive)
+                for pattern, cmd, bare, case_sensitive, fallback in cmds:
+                    unregister_command(name, pattern, cmd, bare, case_sensitive, fallback)
                 for event, cmd in hks:
                     events.unregister_hook(event, cmd)
                 return module_unload()

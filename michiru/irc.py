@@ -290,8 +290,13 @@ class IRCBot(pydle.Client):
 
         server = self.michiru_server_tag
         personalities.set_current(server, None if private else target)
+        success = False
+
         # Iterate through all modules enabled for us and get all the commands from them.
-        for module, matcher, cmd, bare in modules.commands_for(server, None if private else target):
+        for module, matcher, cmd, bare, fallback in modules.commands_for(server, None if private else target):
+            if fallback and success:
+                break
+
              # See if we need to invoke its handler.
             if bare or private:
                 matched_message = matcher.match(message)
@@ -299,6 +304,7 @@ class IRCBot(pydle.Client):
                 if matched_message:
                     try:
                         cmd(self, server, target, by, message, matched_message, private=private, admin=admin)
+                        success = True
                     except Exception as e:
                         self.message(source, _('Error while executing [{mod}:{cmd}]: {err}', mod=module, cmd=cmd.__name__, err=e))
                         traceback.print_exc()
@@ -308,6 +314,7 @@ class IRCBot(pydle.Client):
                 if matched_message:
                     try:
                         cmd(self, server, target, by, parsed_message, matched_message, private=private, admin=admin)
+                        success = True
                     except Exception as e:
                         self.message(source, _('Error while executing [{mod}:{cmd}]: {err}', mod=module, cmd=cmd.__name__, err=e))
                         traceback.print_exc()
