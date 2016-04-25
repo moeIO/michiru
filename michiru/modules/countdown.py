@@ -16,7 +16,7 @@ __desc__ = '3-2-1... Anime!'
 
 ## Database stuff.
 
-config.item('countdown.ready_messages', ['r', 'q'])
+config.item('countdown.ready_messages', [r'(^|\s+)(r+|q+)($|\s+)'])
 
 db.table('countdowns', {
     'id': db.ID,
@@ -74,7 +74,7 @@ def countdown(bot, server, target, source, message, parsed, private, admin):
 @hook('irc.message')
 def message(bot, server, target, who, message, private, admin):
     for ready in config.list('countdown.ready_messages', server, target):
-        if message.lower() == ready.lower():
+        if re.search(ready, message, re.IGNORECASE):
             check_countdown(bot, server, target, who)
 
 
