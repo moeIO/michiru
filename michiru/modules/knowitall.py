@@ -39,9 +39,11 @@ personalities.messages('tsun', {
         'I-It\'s not like I\'d tell someone like YOU, even if I knew!',
     'I\'ll keep it in mind for next time.':
         'S-stop bothering me with these weird things!',
-    '{what} defined.':
+    '{factoid} defined.':
         'gotcha!',
-    '{what}: {definition}':
+    '{factoid} deleted.':
+        'gotcha!',
+    '{factoid}: {definition}':
         '{definition}'
 })
 
@@ -64,13 +66,13 @@ def whatis(bot, server, target, source, message, parsed, private, admin):
         return
 
     definition = get_definition(wanted, server=server, channel=target)
-    bot.message(target, _('{what}: {definition}', source=source, what=wanted, definition=definition))
+    bot.message(target, _('{factoid}: {definition}', source=source, factoid=wanted, definition=definition))
 
 @command('calculate (.+)')
 def calculate(bot, server, target, source, message, parsed, private, admin):
     wanted = parsed.group(1).strip()
     definition = get_definition(wanted, sources=['wolframalpha'], server=server, channel=target)
-    bot.message(target, _('{what}: {definition}', source=source, what=wanted, definition=definition))
+    bot.message(target, _('{factoid}: {definition}', source=source, factoid=wanted, definition=definition))
 
 @command(r'(\S+) is (.*[^\?])$')
 def define(bot, server, target, source, message, parsed, private, admin):
@@ -86,7 +88,13 @@ def define(bot, server, target, source, message, parsed, private, admin):
         'definition': definition
     })
 
-    bot.message(target, _('{what} defined.', what=factoid, definition=definition))
+    bot.message(target, _('{factoid} defined.', source=source, factoid=factoid, definition=definition))
+
+@command(r'forget about (\S+)$')
+def undefine(bot, server, target, source, message, parsed, private, admin):
+    factoid = parsed.group(1)
+    db.from_('factoids').where('factoid', factoid).delete()
+    bot.message(target, _('{factoid} deleted.', source=source, factoid=factoid))
 
 
 ## Utility functions.
