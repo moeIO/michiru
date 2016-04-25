@@ -40,7 +40,9 @@ def uri_twitter(contents, matches):
     # Extract images.
     images = html.find_all('meta', property='og:image')
     for image in images:
-        url = image['content'].rsplit(':', maxsplit=1)[0]
+        url = image['content']
+        if url.count(':') > 1:
+            url = url.rsplit(':', maxsplit=1)[0]
         if re.search(r'(?:https?://)?pic\.twitter\.com/[a-zA-Z0-9_-]+', tweet):
             tweet = re.sub(r'(?:https?://)?pic\.twitter\.com/[a-zA-Z0-9_-]+', url, tweet)
         elif re.search(r'(?:https?://)t\.co/[a-zA-Z0-9_-]+', tweet):
