@@ -43,6 +43,8 @@ personalities.messages('tsun', {
         'gotcha!',
     '{factoid} deleted.':
         'gotcha!',
+    'Unknown definition: {factoid}':
+        'I-I didn\'t know much about {factoid} in the first place... (´･ω･`)',
     '{factoid}: {definition}':
         '{definition}'
 })
@@ -93,9 +95,11 @@ def define(bot, server, target, source, message, parsed, private, admin):
 @command(r'forget about (\S+)$')
 def undefine(bot, server, target, source, message, parsed, private, admin):
     factoid = parsed.group(1)
-    db.from_('factoids').where('factoid', factoid).delete()
-    bot.message(target, _('{factoid} deleted.', source=source, factoid=factoid))
 
+    if db.from_('factoids').where('factoid', factoid).delete():
+        bot.message(target, _('{factoid} deleted.', source=source, factoid=factoid))
+    else:
+        bot.message(target, _('Unknown definition: {factoid}', source=source, factoid=factoid))
 
 ## Utility functions.
 
