@@ -554,9 +554,10 @@ def stats(bot, server, target, source, message, parsed, private, admin):
     def si_ify(n):
         orders = ['k', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y']
         order = math.floor(math.log(n, 2) / 10)
+        n /= math.pow(2, order * 10)
         if order:
-            return '{n}{u}iB'.format(n=round(n, 2), u=order - 1)
-        return '{n}B'.format(n=n)
+            return '{n}{u} iB'.format(n=round(n, 2), u=orders[order - 1])
+        return '{n} B'.format(n=n)
 
     # And dump info.
     proc = psutil.Process(os.getpid())
