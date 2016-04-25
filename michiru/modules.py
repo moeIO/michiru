@@ -4,7 +4,7 @@ import os
 import os.path as path
 import re
 import functools
-import types
+import importlib
 
 from . import config, \
               events, \
@@ -14,14 +14,14 @@ _ = personalities.localize
 config.item('modules', [])
 
 
-__path__ = [
+__path__ = [path.join(p, 'modules') for p in [
     # User modules.
     config.LOCAL_DIR,
     # Global modules.
     config.SITE_DIR,
     # Shipped modules.
     path.dirname(__file__)
-]
+]]
 
 modules = {}
 commands = []
@@ -112,16 +112,13 @@ def hook(event):
 
 # Module loading/unloading.
 
-def get(name):
-    return modules[name][0]
-
 def load(name, soft=True, reload=False):
     """
     Load the given module. If doing a soft load, will not try to load the module from disk again,
     if it's not required. If doing a reload, will unload() the module first.
     """
     global __path__, modules, _commands, _hooks
-    name = path.basename(name)
+    fullname = __name__ + '.' + name
 
     # Decide if the module is already loaded and if we need to unload it.
     if reload:
@@ -131,31 +128,11 @@ def load(name, soft=True, reload=False):
 
     # Attempt to locate the module.
     if not soft or name not in modules.keys():
-        loadpath = None
-        modpath = path.join(*name.split('.'))
-        for path_ in __path__:
-            target = path.join(path_, 'modules', modpath + '.py')
-            if path.isfile(target) and os.access(target, os.R_OK):
-                loadpath = target
-                break
-            target = path.join(path_, 'modules', modpath)
-            if path.isdir(target):
-                target = path.join(target, '__init__.py')
-                if path.isfile(target) and os.access(target, os.R_OK)
-                    loadpath = target
-                    break
-        else:
-            # Not found.
-            raise EnvironmentError(_('Module {mod} does not exist.', mod=name))
-
-        # And load the code.
-        module = types.ModuleType(name)
-        module.__package__ = __name__
+        # Attempt to load module.
         _commands = []
+        _hooks = []
         try:
-            with open(loadpath, 'rb') as f:
-                code = compile(f.read(), loadpath, 'exec')
-                exec(code, module.__dict__)
+            module = importlib.import_module(fullname)
         except Exception as e:
             raise EnvironmentError(_('Error while loading module {mod}: {err}', mod=name, err=e))
 
@@ -207,6 +184,7 @@ def load(name, soft=True, reload=False):
             enabled = module.load()
         except Exception as e:
             del modules[name]
+            del sys.modules[fullname]
             raise EnvironmentError(_('Error while loading module {mod}: {err}', mod=name, err=e))
 
         modules[name] = module, True, enabled
@@ -222,8 +200,8 @@ def unload(name, soft=True):
     and will error when an exception occurs in the module's unload() routine.
     """
     global modules
+    fullname = __name__ + '.' + name
 
-    name = path.basename(name)
     if name not in modules.keys():
         # Not loaded.
         raise EnvironmentError(_('Module {mod} is not loaded.', mod=name))
@@ -241,6 +219,7 @@ def unload(name, soft=True):
 
     # Delete module from dict and config if we're doing a hard unload.
     if not soft:
+        del sys.modules[fullname]
         del modules[name]
         if name in config.list('modules'):
             config.delete('modules', name)
