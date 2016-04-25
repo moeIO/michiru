@@ -47,7 +47,7 @@ def check_countdown(bot, server, channel, person=None):
         # Start countdown.
         for count in range(current['count']):
             bot.eventloop.schedule_in(count, functools.partial(do_count, count))
-        bot.eventloop.schedule_in(current['count'], lambda: bot.message(channel, _('{countmessage}!', countmessage=current['message'].decode('utf-8'))))
+        bot.eventloop.schedule_in(current['count'] + 1, lambda: bot.message(channel, _('{countmessage}!', countmessage=current['message'].decode('utf-8'))))
 
 
 ## Commands.
