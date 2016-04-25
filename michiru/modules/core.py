@@ -543,7 +543,7 @@ def version_(bot, server, target, source, message, parsed, private, admin):
 
 @command(r'stats')
 @command(r'(?:what(?: kind of)?|how many) resources are you using\??')
-@command(r'how bloated are you\??')
+@command(r'how (?:bloated|thick) are you\??')
 def stats(bot, server, target, source, message, parsed, private, admin):
     try:
         import psutil
@@ -561,12 +561,12 @@ def stats(bot, server, target, source, message, parsed, private, admin):
     # And dump info.
     proc = psutil.Process(os.getpid())
     bot.message(target, _('I use: CPU: {cpuperc}%; RAM: {ramused}/{ramtotal} ({ramperc}%); Threads: {threadcount}; Connections: {conncount}',
-        cpuperc=round(proc.get_cpu_percent(), 2),
-        ramused=si_ify(proc.get_memory_info()[0]),
+        cpuperc=round(proc.cpu_percent(), 2),
+        ramused=si_ify(proc.memory_info()[0]),
         ramtotal=si_ify(psutil.virtual_memory().total),
-        ramperc=round(proc.get_memory_percent(), 2),
-        threadcount=proc.get_num_threads(),
-        conncount=len(proc.get_connections('inet'))))
+        ramperc=round(proc.memory_percent(), 2),
+        threadcount=proc.num_threads(),
+        conncount=len(proc.connections('inet'))))
 
 
 ## Boilerplate.
