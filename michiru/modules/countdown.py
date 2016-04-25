@@ -1,5 +1,6 @@
 # 3-2-1... Anime!
 import re
+import functools
 
 from michiru import config, db, personalities
 from michiru.modules import command, hook
@@ -31,19 +32,22 @@ def check_countdown(bot, server, channel, person=None):
     if not current:
         return
 
-    people = current.people.split(',') if current.people else []
+    people = current['people'].split(',') if current['people'] else []
     if person and person.lower() in people:
         people.remove(person.lower())
-        db.on('countdowns').where('id', current.id).update({
+        db.on('countdowns').where('id', current['id']).update({
             'people': ','.join(people)
         })
 
+    def do_count(count):
+        bot.message(channel, _('{count}'.format(count=current['count'] - count)))
+
     if not people:
-        db.from_('countdowns').where('id', current.id).delete()
+        db.from_('countdowns').where('id', current['id']).delete()
         # Start countdown.
-        for count in range(current.count):
-            bot.eventloop.schedule_in(count, lambda: bot.message(channel, _('{count}'.format(count=current.count - count))))
-        bot.eventloop.schedule_in(current.count, lambda: bot.message(channel, _('{countmessage}!', countmessage=current.message.decode('utf-8'))))
+        for count in range(current['count']):
+            bot.eventloop.schedule_in(count, functools.partial(do_count, count))
+        bot.eventloop.schedule_in(current['count'], lambda: bot.message(channel, _('{countmessage}!', countmessage=current['message'].decode('utf-8'))))
 
 
 ## Commands.
@@ -72,3 +76,12 @@ def message(bot, server, target, who, message, private, admin):
     for ready in config.list('countdown.ready_messages', server, target):
         if message.lower() == ready.lower():
             check_countdown(bot, server, target, who)
+
+
+## Module stuff.
+
+def load():
+    return True
+
+def unload():
+    pass

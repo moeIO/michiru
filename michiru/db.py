@@ -232,6 +232,7 @@ class Query:
 
             for field, value in values.items():
                 value_statements.append('`{field}` = ?'.format(field=field))
+                vals.append(value)
             query += ', '.join(value_statements)
 
         # Build where.
