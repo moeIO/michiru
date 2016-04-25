@@ -42,7 +42,7 @@ personalities.messages('tsun', {
     '{what} defined.':
         'gotcha!',
     '{what}: {definition}':
-        '{what} is {definition}'
+        '{definition}'
 })
 
 
@@ -64,13 +64,13 @@ def whatis(bot, server, target, source, message, parsed, private, admin):
         return
 
     definition = get_definition(wanted, server=server, channel=target)
-    bot.message(target, _('{what}: {definition}', what=wanted, definition=definition))
+    bot.message(target, _('{what}: {definition}', source=source, what=wanted, definition=definition))
 
 @command('calculate (.+)')
 def calculate(bot, server, target, source, message, parsed, private, admin):
     wanted = parsed.group(1).strip()
     definition = get_definition(wanted, sources=['wolframalpha'], server=server, channel=target)
-    bot.message(target, _('{what}: {definition}', what=wanted, definition=definition))
+    bot.message(target, _('{what}: {definition}', source=source, what=wanted, definition=definition))
 
 @command(r'(\S+) is (.*[^\?])$')
 def define(bot, server, target, source, message, parsed, private, admin):
