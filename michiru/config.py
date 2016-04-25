@@ -278,4 +278,4 @@ def save():
         raise EnvironmentError(_('Could not get a writable configuration file.'))
 
     with open(target, 'w') as f:
-        json.dump(current, f)
+        json.dump(current, f, indent=4, separators=(',', ': '))
