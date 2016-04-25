@@ -5,7 +5,7 @@ import random
 import urbandict
 import wolframalpha
 
-from michiru import config, personalities
+from michiru import config, db, personalities
 from michiru.modules import command
 _ = personalities.localize
 
@@ -21,6 +21,13 @@ __desc__ = 'Knows things better than you.'
 ## Configuration.
 
 config.item('knowitall.wolfram_api_key', None)
+
+db.table('factoids', {
+    'id': db.INT,
+    'factoid': (db.STRING, db.INDEX),
+    'definition': db.STRING
+})
+
 personalities.messages('tsun', {
     'Me.':
         'Michiru でーす！',
@@ -31,8 +38,11 @@ personalities.messages('tsun', {
     'What is this you are speaking of?':
         'I-It\'s not like I\'d tell someone like YOU, even if I knew!',
     'I\'ll keep it in mind for next time.':
-        'S-stop bothering me with these weird things!'
+        'S-stop bothering me with these weird things!',
+    '{what} defined.':
+        'gotcha!'
 })
+
 
 ## Commands.
 
@@ -51,23 +61,42 @@ def whatis(bot, server, target, source, message, parsed, private, admin):
         return
 
     definition = get_definition(wanted, server=server, channel=target)
-    bot.message(target, definition)
+    bot.message(target, _('{what}: {definition}', what=wanted, definition=definition))
 
 @command('calculate (.+)')
 def calculate(bot, server, target, source, message, parsed, private, admin):
     wanted = parsed.group(1).strip()
     definition = get_definition(wanted, sources=['wolframalpha'], server=server, channel=target)
-    bot.message(target, definition)
+    bot.message(target, _('{what}: {definition}', what=wanted, definition=definition))
+
+@command(r'(\S+) is (.*)')
+def define(bot, server, target, source, message, parsed, private, admin):
+    factoid = parsed.group(1)
+    definition = parsed.group(2).strip()
+
+    db.from_('factoids').where('factoid', factoid).delete()
+    db.to('factoids').add({
+        'factoid': factoid,
+        'definition': definition
+    })
+
+    bot.message(target, _('{what} defined.', what=factoid, definition=definition))
 
 
 ## Utility functions.
 
-def get_definition(wanted, sources=['urbandictionary', 'wolframalpha'], server=None, channel=None):
+def get_definition(wanted, sources=['factoids', 'urbandictionary', 'wolframalpha'], server=None, channel=None):
     """ Try to define something through several sources. """
     definition = None
 
+    # Look up factoids first.
+    if 'factoids' in sources:
+        query = db.from_('factoids').where('factoid', wanted).single('definition')
+        if query:
+            definition = query['definition']
+
     # See if urbandictionary knows something.
-    if 'urbandictionary' in sources:
+    if not definition and 'urbandictionary' in sources:
         udres = urbandict.define(wanted)
         if udres:
             definition = udres['definitions'][0]['definition']
