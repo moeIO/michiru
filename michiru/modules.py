@@ -25,6 +25,7 @@ __path__ = [
 
 modules = {}
 commands = []
+dependencies = {}
 
 # Used by decorators at module init time.
 _commands = []
@@ -189,6 +190,8 @@ def load(name, soft=True, reload=False):
 
     # Load dependencies.
     for dep in getattr(module, '__deps__', []):
+        dependencies.setdefault(dep, [])
+        dependencies[dep].append(name)
         load(dep, soft=True, reload=False)
 
     # Finally, run the load routine.
@@ -200,6 +203,11 @@ def load(name, soft=True, reload=False):
             raise EnvironmentError(_('Error while loading module {mod}: {err}', mod=name, err=e))
 
         modules[name] = module, True, enabled
+
+    # And reload depending modules.
+    if reload:
+        for dep in dependencies.get(name, []):
+            load(dep, soft=soft, reload=True)
 
 def unload(name, soft=True):
     """
