@@ -130,9 +130,9 @@ def uri_twitter(contents, matches):
     images = html.find_all('meta', property='og:image')
     for image in images:
         url = image['content'].rsplit(':', maxsplit=1)[0]
-        if re.match(r'(?:https?://)?pic\.twitter\.com/[a-zA-Z0-9_-]+', tweet):
+        if re.search(r'(?:https?://)?pic\.twitter\.com/[a-zA-Z0-9_-]+', tweet):
             tweet = re.sub(r'(?:https?://)?pic\.twitter\.com/[a-zA-Z0-9_-]+', url, tweet)
-        elif re.match(r'(?:https?://)t\.co/[a-zA-Z0-9_-]+', tweet):
+        elif re.search(r'(?:https?://)t\.co/[a-zA-Z0-9_-]+', tweet):
             tweet = re.sub(r'(?:https?://)t\.co/[a-zA-Z0-9_-]+', url, tweet)
         else:
             tweet += ' ' + url
