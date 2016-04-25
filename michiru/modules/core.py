@@ -560,13 +560,17 @@ def stats(bot, server, target, source, message, parsed, private, admin):
 
     # And dump info.
     proc = psutil.Process(os.getpid())
+    try:
+        conncount = len(proc.connections('inet'))
+    except psutil.AccessDenied:
+        conncount = '???'
     bot.message(target, _('I use: CPU: {cpuperc}%; RAM: {ramused}/{ramtotal} ({ramperc}%); Threads: {threadcount}; Connections: {conncount}',
         cpuperc=round(proc.cpu_percent(), 2),
         ramused=si_ify(proc.memory_info()[0]),
         ramtotal=si_ify(psutil.virtual_memory().total),
         ramperc=round(proc.memory_percent(), 2),
         threadcount=proc.num_threads(),
-        conncount=len(proc.connections('inet'))))
+        conncount=conncount))
 
 
 ## Boilerplate.
