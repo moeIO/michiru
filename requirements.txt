@@ -4,3 +4,4 @@ requests
 -e git+https://github.com/Shizmob/urbandict.py@master#egg=urbandict-dev
 wolframalpha
 pydle
+aniso8601

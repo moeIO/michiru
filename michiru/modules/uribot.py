@@ -1,11 +1,14 @@
 # URI title bot.
 import re
-import requests
-import bs4
 import json
 import urllib.parse
+import traceback
 
-from michiru import config, personalities
+import requests
+import bs4
+import aniso8601
+
+from michiru import config, personalities, version
 from michiru.modules import command
 _ = personalities.localize
 
@@ -20,8 +23,14 @@ __desc__ = 'Gives URL information.'
 
 ## Configuration and constants.
 
+config.item('uribot.user_agent', '{}/{}'.format(version.__name__, version.__version__))
 config.item('uribot.use_whitelist', False)
 config.item('uribot.whitelist', [])
+config.item('uribot.verbose_errors', False)
+config.item('uribot.api.youtube', None)
+config.item('uribot.api.soundcloud', None)
+config.item('uribot.api.twitch', None)
+
 
 # Thanks Hitler, Obama and Daring Fireball.
 URI_REGEXP = re.compile(r"""(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'".,<>?«»“”‘’]))""")
@@ -40,48 +49,62 @@ def uri_title(contents, matches):
 
 def uri_youtube(contents, matches):
     """ Extract YouTube video information. """
-    xml = bs4.BeautifulSoup(contents)
+    video = json.loads(contents)
+    info = video['items'][0]['snippet']
+    details = video['items'][0]['contentDetails']
 
-    # Get video title.
-    if not xml.title:
-        return
-    title = xml.title.string
+    duration = int(aniso8601.parse_duration(details['duration']).total_seconds())
+    meta = '{}:{:02}'.format(*divmod(duration, 60))
 
-    # Get video author.
-    if xml.author.find('name').string:
-        author = xml.author.find('name').string
-    else:
-        author = None
+    return 'YouTube: {}'.format(info['channelTitle']), info['title'], meta
 
-    # Get video duration.
-    if xml.find('yt:duration'):
-        duration = int(xml.find('yt:duration')['seconds'])
-    else:
-        duration = None
+def uri_soundcloud(contents, matches):
+    """ Extract SoundCloud song information. """
+    song = json.loads(contents)
 
-    # Put it into a nice format.
-    if author:
-        type = 'YouTube: {}'.format(author)
-    else:
-        type = 'YouTube'
-    if duration:
-        meta = '{}:{:02d}'.format(*divmod(duration, 60))
-    else:
-        meta = ''
+    title = song['title'].replace('\n', ' ')
+    title = re.sub(r'\s+', ' ', title).strip()
+    duration = int(round(song['duration'] / 1000))
+    meta = '{}:{:02}'.format(*divmod(duration, 60))
 
-    return type, title, meta
+    return 'SoundCloud: {}'.format(song['user']['username']), title, meta
+
+def uri_twitch(contents, matches):
+    """ Extract Twitch.tv channel information. """
+    channel = json.loads(contents)
+
+    title = channel['status'].replace('\n', ' ')
+    title = re.sub(r'\s+', ' ', title).strip()
+    game = channel['game'].replace('\n', ' ')
+    game = re.sub(r'\s+', ' ', game).strip()
+
+    return 'Twitch: {}'.format(channel['display_name']), title, game
 
 def uri_reddit(contents, matches):
     """ Extract Reddit thread information. """
-    thread = json.loads(contents)
-    # Do we want the OP or a specific reply?
-    wanted = matches.group(3)
-
-    # Gather some metadata.
+    post, comments = json.loads(contents)
     subreddit = matches.group(2)
 
+    # Do we want the OP or a specific reply?
+    if matches.group(4):
+        data = comments['data']['children'][0]['data']
+        title = data['body']
+    else:
+        data = post['data']['children'][0]['data']
+        title = data['title']
 
-    type = 'Reddit: /r/{}'.format(subreddit)
+    # Un-markdownify a bit.
+    title = re.sub(r'\!?\[(.*)\]\((.+)\)', r'\1: \2', title)
+    # Clean up.
+    title = title.replace('\n', ' ')
+    title = re.sub(r'\s+', ' ', title).strip()
+
+    # Get metadata.
+    meta = None
+    if not data.get('score_hidden'):
+        meta = '↑↓{}'.format(data['score'])
+
+    return 'Reddit: /r/{}'.format(subreddit), title, meta
 
 
 def uri_twitter(contents, matches):
@@ -99,19 +122,31 @@ def uri_twitter(contents, matches):
     except:
         retweets = None
     try:
-        favourites = html.find('ul', class_='stats').find('li', class_='js-stat-favorites').strong.string
+        likes = html.find('ul', class_='stats').find('li', class_='js-stat-favorites').strong.string
     except:
-        favourites = None
+        likes = None
 
+    # Extract images.
+    images = html.find_all('meta', property='og:image')
+    for image in images:
+        url = image['content'].rsplit(':', maxsplit=1)[0]
+        if re.match(r'(?:https?://)?pic\.twitter\.com/[a-zA-Z0-9_-]+', tweet):
+            tweet = re.sub(r'(?:https?://)?pic\.twitter\.com/[a-zA-Z0-9_-]+', url, tweet)
+        elif re.match(r'(?:https?://)t\.co/[a-zA-Z0-9_-]+', tweet):
+            tweet = re.sub(r'(?:https?://)t\.co/[a-zA-Z0-9_-]+', url, tweet)
+        else:
+            tweet += ' ' + url
+    # Un-cramp URLs.
+    tweet = re.sub(r'(?!\s+)http(s)?:', r' http\1:', tweet)
     # Post-process tweet a bit.
-    tweet = re.sub('\s+', ' ', tweet)
+    tweet = re.sub(r'\s+', ' ', tweet).strip()
 
     # Build metadata.
     meta = []
     if retweets:
         meta.append('↻ ' + retweets)
-    if favourites:
-        meta.append('★ ' + favourites)
+    if likes:
+        meta.append('♥ ' + likes)
 
     return 'Twitter: {}'.format(user), tweet, ', '.join(meta)
 
@@ -128,35 +163,36 @@ def uri_4chan(contents, matches):
             pass
 
     title = None
+    comment = None
     # We want a given number.
     if wanted:
         for post in thread['posts']:
-            if int(post['no']) == wanted:
+            if post['no'] == wanted:
                 # Found the post!
-                # Use post contents as URL title, stripped from HTML and cut down.
-                # We need to invent our own newlines.
-                comment = post['com'].replace('<br>', '\n')
-                raw_title = ''.join(bs4.BeautifulSoup(comment).find_all(text=True))
-
-                # Add ... if needed and remove unnecessary whitespace.
-                title = raw_title[:300] + '...' * (len(raw_title) > 300)
-                title = re.sub('\s+', ' ', title)
+                comment = post['com']
 
     # We want the OP.
-    if not title:
+    if not comment:
         op = thread['posts'][0]
         if 'sub' in op:
             # Use thread title as URL title.
             title = op['sub']
         else:
-            # Use thread contents as URL title, stripped from HTML and cut down.
-            # We need to invent our own newlines.
-            comment = post['com'].replace('<br>', '\n')
-            raw_title = ''.join(bs4.BeautifulSoup(comment).find_all(text=True))
+            comment = post['com']
 
-            # Add ... if needed and remove unnecessary whitespace.
-            title = raw_title[:300] + '...' * (len(raw_title) > 300)
-            title = re.sub('\s+', ' ', title)
+    # Build title from comment.
+    if not title and comment:
+        # Use post contents as URL title, stripped from HTML and cut down.
+        # We need to invent our own newlines.
+        comment = comment.replace('<br>', '\n')
+        comment = comment.replace('<s>', personalities.IRC_CODES['spoiler'])
+        comment = comment.replace('</s>', personalities.IRC_CODES['/spoiler'])
+        comment = comment.replace('\n', ' ')
+        raw_title = ''.join(bs4.BeautifulSoup(comment).find_all(text=True))
+
+        # Add ... if needed and remove unnecessary whitespace.
+        title = raw_title[:300] + '...' * (len(raw_title) > 300)
+        title = re.sub(r'\s+', ' ', title)
 
     # Gather some metadata.
     board = matches.group(1)
@@ -171,21 +207,60 @@ def uri_4chan(contents, matches):
 
     return type, title, meta
 
+def uri_danbooru(contents, matches):
+    """ Extract Danbooru post information. """
+    post = json.loads(contents)
+
+    url = 'http://danbooru.donmai.us{}'.format(post['file_url'])
+    artists = [tag.replace('_', ' ').title() for tag in post['tag_string_artist'].split()]
+    tags = [tag.replace('_', ' ').title() for tag in post['tag_string_character'].split()]
+
+    return 'Danbooru: {}'.format(', '.join(artists)), url, ', '.join(tags)
+
 
 # All URI handlers.
 URI_HANDLERS = {
     # YouTube video.
-    r'^https?://(?:www\.)youtube\.com/watch\?(?:\S*)v=([a-zA-Z0-9_-]+)(?:[&#]\S*)?$':
-        (uri_youtube, r'https://gdata.youtube.com/feeds/api/videos/\1'),
+    r'^https?://(?:www\.)youtube\.com/watch\?(?:\S*)v=([a-zA-Z0-9_-]+)(?:[&#]\S*)?$': {
+        'enabled': lambda: config.get('uribot.api.youtube'),
+        'handler': uri_youtube,
+        'replacement': r'https://www.googleapis.com/youtube/v3/videos?id=\1&key={}&part=snippet,contentDetails&fields=items(id,snippet(title,channelTitle),contentDetails(duration))'.format(config.get('uribot.api.youtube'))
+    },
+    # Soundcloud song.
+    r'^https?://(?:www\.)?soundcloud\.com/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)$': {
+        'enabled': lambda: config.get('uribot.api.soundcloud'),
+        'handler': uri_soundcloud,
+        'replacement': r'https://api.soundcloud.com/resolve.json?url=https://soundcloud.com/\1/\2&client_id={}'.format(config.get('uribot.api.soundcloud'))
+    },
+    # Twitch channel.
+    r'^https?://(?:www\.)?twitch\.tv/([a-zA-Z0-0_-]+)$': {
+        'enabled': lambda: config.get('uribot.api.twitch'),
+        'handler': uri_twitch,
+        'replacement': r'https://api.twitch.tv/kraken/channels/\1',
+        'headers': {
+            'Client-ID': config.get('uribot.api.twitch'),
+            'Accept': 'application/vnd.twitchtv.v3+json'
+        }
+    },
     # Reddit post/comment.
-    r'^(https?://(?:.*?\.){0,1}reddit\.com/r/([a-zA-Z0-9_-]+)/comments/([a-zA-Z0-9_-]+)(/([a-zA-Z0-9_-]+))?/?)(?:[?&#]\S*)?$':
-        (uri_reddit, '\1.json'),
+    r'^(https?://(?:.*?\.){0,1}reddit\.com/r/([a-zA-Z0-9_-]+)/comments/([a-zA-Z0-9_-]+)/(?:[a-zA-Z0-9_-]+)(?:/([a-zA-Z0-9_-]+))?/?)(?:[?&#]\S*)?$': {
+        'handler': uri_reddit,
+        'replacement': r'\1.json'
+    },
     # Twitter status.
-    r'^https?://(?:www\.){0,1}twitter\.com/([a-zA-Z0-9_-]+)/status/([0-9]+)(?:[?#&]\S*)?$':
-        (uri_twitter, None),
+    r'^https?://(?:www\.){0,1}twitter\.com/([a-zA-Z0-9_-]+)/status/([0-9]+)(?:[?#&]\S*)?$': {
+        'handler': uri_twitter,
+    },
     # 4chan thread/post.
-    r'^https?://boards\.4chan\.org/([a-z0-9]+)/res/([0-9]+)(?:#p?([0-9]+))?$':
-        (uri_4chan, r'https://api.4chan.org/\1/res/\2.json')
+    r'^https?://boards\.4chan\.org/([a-z0-9]+)/thread/([0-9]+)(?:/[a-z0-9_-]+/?)?(?:#p?([0-9]+))?$': {
+        'handler': uri_4chan,
+        'replacement': r'https://api.4chan.org/\1/res/\2.json'
+    },
+    # Danbooru post.
+    r'^https?://danbooru.donmai.us/posts/([0-9]+)(?:\?.*)?$': {
+        'handler': uri_danbooru,
+        'replacement': r'https://danbooru.donmai.us/posts/\1.json'
+    }
 }
 
 
@@ -214,28 +289,47 @@ def uri(bot, server, target, source, message, parsed, private, admin):
 
         # Stock handler: extract the URI.
         handler = uri_title
+        headers = {}
         # See if we want a custom handler.
-        for matcher, (hndlr, replacement) in URI_HANDLERS.items():
+        for matcher, details in URI_HANDLERS.items():
+            if not details.get('enabled', lambda: True)():
+                continue
+
             matches = matcher.match(uri)
 
             if matches:
-                if replacement:
-                    uri = matcher.sub(replacement, uri)
-                handler = hndlr
+                if 'replacement' in details:
+                    uri = matcher.sub(details['replacement'], uri)
+                if 'headers' in details:
+                    headers.update(details['headers'])
+                handler = details['handler']
                 break
 
         # Do request.
+        headers.setdefault('User-Agent', config.get('uribot.user_agent', server, target))
         try:
-            response = requests.get(uri)
+            response = requests.get(uri, headers=headers)
         except:
+            traceback.print_exc()
+            if config.get('uribot.verbose_errors', server, target):
+                raise
             continue
-        if not response:
+        if response.status_code >= 400:
+            if config.get('uribot.verbose_errors', server, target):
+                bot.message(target, _('Couldn\'t load URL! Response code: {}'.format(response.status_code)))
             continue
 
         # Parse response.
-        res = handler(response.text, matches)
-        if not res:
+        try:
+            res = handler(response.text, matches)
+            if not res:
+                continue
+        except:
+            traceback.print_exc()
+            if config.get('uribot.verbose_errors', server, target):
+                raise
             continue
+
         type, title, meta = res
 
         # Post info.

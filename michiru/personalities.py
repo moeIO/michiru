@@ -15,23 +15,26 @@ IRC_CODES = {
     '/u': chr(0x15),
     # Reset.
     '_': chr(0xF),
-    ## Colors.
-    'white': chr(0x3) + chr(0x0),
-    'black': chr(0x3) + chr(0x1),
-    'darkblue': chr(0x3) + chr(0x2),
-    'darkgreen': chr(0x3) + chr(0x3),
-    'red': chr(0x3) + chr(0x4),
-    'darkred': chr(0x3) + chr(0x5),
-    'darkviolet': chr(0x3) + chr(0x6),
-    'orange': chr(0x3) + chr(0x7),
-    'yellow': chr(0x3) + chr(0x8),
-    'lightgreen': chr(0x3) + chr(0x9),
-    'cyan': chr(0x3) + chr(0xA),
-    'lightcyan': chr(0x3) + chr(0xB),
-    'blue': chr(0x3) + chr(0xC),
-    'violet': chr(0x3) + chr(0xD),
-    'darkgray': chr(0x3) + chr(0xE),
-    'lightgray': chr(0x3) + chr(0xF)
+    # Colors.
+    'white': chr(0x3) + '00',
+    'black': chr(0x3) + '01',
+    'darkblue': chr(0x3) + '02',
+    'darkgreen': chr(0x3) + '03',
+    'red': chr(0x3) + '04',
+    'darkred': chr(0x3) + '05',
+    'darkviolet': chr(0x3) + '06',
+    'orange': chr(0x3) + '07',
+    'yellow': chr(0x3) + '08',
+    'lightgreen': chr(0x3) + '09',
+    'cyan': chr(0x3) + '10',
+    'lightcyan': chr(0x3) + '11',
+    'blue': chr(0x3) + '12',
+    'violet': chr(0x3) + '13',
+    'darkgray': chr(0x3) + '14',
+    'lightgray': chr(0x3) + '15',
+    # Misc.
+    'spoiler': chr(0x2) + chr(0x3) + '01,01',
+    '/spoiler': chr(0x3) + chr(0x2)
 }
 
 messages_ = {}
