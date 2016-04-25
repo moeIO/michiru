@@ -219,6 +219,8 @@ class Query:
         self.handle.commit()
         mutex.release()
 
+        return cursor.rowcount
+
     def update(self, values):
         """ Perform data update query. """
         global mutex
@@ -253,6 +255,8 @@ class Query:
         cursor.execute(query, tuple(vals))
         self.handle.commit()
         mutex.release()
+
+        return cursor.rowcount
 
 
 def on(table):
