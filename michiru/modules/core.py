@@ -255,7 +255,7 @@ def reload(bot, server, target, source, message, parsed, private, admin):
 
 @command(r'loaded')
 def loaded(bot, server, target, source, message, parsed, private, admin):
-    bot.message(target, _('Loaded modules: {mods}', mods=', '.join(modules.modules.keys())))
+    bot.message(target, _('Loaded modules: {mods}', mods=', '.join(sorted(modules.modules.keys()))))
 
 
 ## Join/part servers/channels.
