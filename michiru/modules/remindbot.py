@@ -89,7 +89,7 @@ def message(bot, server, target, who, message, private, admin):
 ## Callback/utility functions.
 
 def parse_timespan(message):
-    chunks = [ x.strip() for x in re.split('(,|and)', message, flags=re.IGNORECASE) ]
+    chunks = re.split(r'\s*(,|and)\s*', message, flags=re.IGNORECASE)
     regexp = re.compile(r'([0-9]+) (\S+)$')
 
     timespans = {
