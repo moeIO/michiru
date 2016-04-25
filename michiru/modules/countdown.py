@@ -8,10 +8,10 @@ _ = personalities.localize
 
 
 ## Module information.
-__name__ = 'core'
+__name__ = 'countdown'
 __author__ = 'Shiz'
 __license__ = 'WTFPL'
-__desc__ = 'Core functionality.'
+__desc__ = '3-2-1... Anime!'
 
 
 ## Database stuff.
