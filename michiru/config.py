@@ -91,22 +91,25 @@ def _overrides(item, server=None, channel=None):
     res = []
     if _has(item):
         res.append(current)
-    if server and server in current['_overrides'] and _has(item, current['_overrides'][server]):
+    if server and server in current['_overrides']['servers'] and _has(item, current['_overrides']['servers'][server]):
         res.append(current['_overrides'][server])
-    if server and channel and (server, channel) in current['_overrides'] and _has(item, current['_overrides'][server, channel]):
-        res.append(current['_overrides'][server, channel])
+    if server and channel and server in current['_overrides']['channels'] and channel in current['_overrides']['channels'][server] and _has(item, current['_overrides']['channels'][server][channel]):
+        res.append(current['_overrides']['channels'][server][channel])
     return res
 
 def _override(server, channel):
     if server:
         if channel:
-            v = server, channel
-        else:
-            v = server
+            if server not in current['_overrides']['channels']:
+                current['_overrides']['channels'][server] = {}
+            if channel not in current['_overrides']['channels'][server]:
+                current['_overrides']['channels'][server][channel] = {}
+            return current['_overrides']['channels'][server][channel]
 
-        if v not in current['_overrides']:
-            current['_overrides'][v] = {}
-        return current['_overrides'][v]
+        if server not in current['_overrides']['servers']:
+            current['_overrides']['servers'][server] = {}
+        return current['_overrides']['servers'][server]
+
     return current
 
 
@@ -240,9 +243,11 @@ def directory(*dir, writable=False):
     return None
 
 
-def load():
+def load(dir=None):
     """ Load configuration from CONFIG_FILE. """
-    global current, CONFIG_FILE
+    global current, CONFIG_FILE, LOCAL_DIR
+    if dir is not None:
+        LOCAL_DIR = dir
 
     # Something is probably wrong if we don't have a configuration file.
     fn = filename(CONFIG_FILE)
@@ -257,6 +262,8 @@ def load():
 
     # Ensure override data exists.
     item('_overrides', {})
+    item('_overrides.servers', {})
+    item('_overrides.channels', {})
 
 def save():
     """ Save configuration to CONFIG_FILE. """
