@@ -4,6 +4,7 @@ import os
 import os.path as path
 import re
 import functools
+import types
 
 from . import config, \
               events, \
@@ -110,6 +111,9 @@ def hook(event):
 
 # Module loading/unloading.
 
+def get(name):
+    return modules[name][0]
+
 def load(name, soft=True, reload=False):
     """
     Load the given module. If doing a soft load, will not try to load the module from disk again,
@@ -137,12 +141,13 @@ def load(name, soft=True, reload=False):
             raise EnvironmentError(_('Module {mod} does not exist.', mod=name))
 
         # And load the code.
-        module = {}
+        module = types.ModuleType(name)
+        module.__package__ = __name__
         _commands = []
         try:
             with open(loadpath, 'rb') as f:
                 code = compile(f.read(), loadpath, 'exec')
-                exec(code, module, module)
+                exec(code, module.__dict__)
         except Exception as e:
             raise EnvironmentError(_('Error while loading module {mod}: {err}', mod=name, err=e))
 
@@ -151,8 +156,8 @@ def load(name, soft=True, reload=False):
             # I love capturing variables.
             cmds = _commands
             hks = _hooks
-            mld = module['load']
-            muld = module['unload']
+            mld = module.load
+            muld = module.unload
 
             # And local functions.
             def ld():
@@ -170,8 +175,8 @@ def load(name, soft=True, reload=False):
 
                 return muld()
 
-            module['load'] = ld
-            module['unload'] = uld
+            module.load = ld
+            module.unload = uld
             _commands = []
             _hooks = []
 
@@ -182,19 +187,19 @@ def load(name, soft=True, reload=False):
     if initialized and not soft and not reload:
         raise EnvironmentError(_('Module {mod} already loaded.', mod=name))
 
+    # Load dependencies.
+    for dep in getattr(module, '__deps__', []):
+        load(dep, soft=True, reload=False)
+
     # Finally, run the load routine.
-    try:
-        enabled = module['load']()
-    except Exception as e:
-        del modules[name]
-        raise EnvironmentError(_('Error while loading module {mod}: {err}', mod=name, err=e))
+    if not initialized or reload:
+        try:
+            enabled = module.load()
+        except Exception as e:
+            del modules[name]
+            raise EnvironmentError(_('Error while loading module {mod}: {err}', mod=name, err=e))
 
-    # And add to config.
-    #if name not in config.getlist('modules'):
-    #    config.add('modules', name)
-
-    # And to the dict.
-    modules[name] = module, True, enabled
+        modules[name] = module, True, enabled
 
 def unload(name, soft=True):
     """
@@ -214,7 +219,7 @@ def unload(name, soft=True):
 
     # Run unload routine.
     try:
-        module['unload']()
+        module.unload()
     except Exception as e:
         if soft:
             raise EnvironmentError(_('Error while unloading module {mod}: {err}', mod=name, err=e))
