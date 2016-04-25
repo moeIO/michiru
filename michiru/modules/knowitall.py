@@ -51,6 +51,7 @@ personalities.messages('tsun', {
 @command('(?:what|who|where|how|why)(?: am| is|\'s|are|\'re) (?:an? |the )?(.+)\??$')
 @command('(tell .+)\.?')
 @command('define (.+)\.?')
+@command('(.+)$', fallback=True)
 def whatis(bot, server, target, source, message, parsed, private, admin):
     wanted = parsed.group(1).strip()
 
