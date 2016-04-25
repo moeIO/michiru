@@ -52,10 +52,28 @@ personalities.messages('tsun', {
 
 ## Commands.
 
+@command('(\S+)[:,] (.+)$', fallback=True, bare=True)
+def raw_whatis(bot, server, target, source, message, parsed, private, admin):
+    addressed = parsed.group(1)
+    wanted = parsed.group(2).strip()
+
+    if addressed.lower() != bot.nickname.lower():
+        return
+
+    # Obvious edge cases.
+    if wanted == bot.nickname:
+        bot.message(target, _('Me.'))
+        return
+    elif wanted == source:
+        bot.message(target, _('You.'))
+        return
+
+    definition = get_definition(wanted, server=server, channel=target)
+    bot.message(target, _('{factoid}: {definition}', source=source, factoid=wanted, definition=definition))
+
 @command('(?:what|who|where|how|why)(?: am| is|\'s|are|\'re) (?:an? |the )?(.+)\??$')
 @command('(tell .+)\.?')
 @command('define (.+)\.?')
-@command('(.+)$', fallback=True)
 def whatis(bot, server, target, source, message, parsed, private, admin):
     wanted = parsed.group(1).strip()
 
