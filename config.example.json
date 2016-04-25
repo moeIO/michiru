@@ -1,0 +1,20 @@
+{
+  "modules": {},
+
+  "personality": "plain",
+  "command_prefixes": [':'],
+
+  "servers": {
+    "rizon": {
+      "host": "irc.rizon.net",
+      "tls": true,
+      "channels": ["#michiru"],
+      "nickname": "Michiru",
+      "nickserv_password": null
+    }
+  },
+
+  "knowitall": {
+    "wolfram_api_key": null
+  }
+}
