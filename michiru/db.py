@@ -219,6 +219,41 @@ class Query:
         self.handle.commit()
         mutex.release()
 
+    def update(self, values):
+        """ Perform data update query. """
+        global mutex
+        query = 'UPDATE `{table}`'.format(table=self.table)
+        vals = []
+
+        # Build field values.
+        if values:
+            query += ' SET '
+            value_statements = []
+
+            for field, value in values.items():
+                value_statements.append('`{field}` = ?'.format(field=field))
+            query += ', '.join(value_statements)
+
+        # Build where.
+        if self.constraints:
+            query += ' WHERE '
+            first = True
+            constraint_statements = []
+
+            for name, comparator, value, connector in self.constraints:
+                constraint_statements.append('{conn} `{field}` {cmp} ?'.format(field=name, cmp=comparator, conn='' if first else connector))
+                vals.append(val2db(value))
+                first = False
+            query += ' '.join(constraint_statements)
+
+        # Execute.
+        mutex.acquire()
+        cursor = self.handle.cursor()
+        cursor.execute(query, tuple(vals))
+        self.handle.commit()
+        mutex.release()
+
+
 def on(table):
     """ Start a query on given data. """
     global handle
