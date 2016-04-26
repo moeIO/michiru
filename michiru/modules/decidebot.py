@@ -45,7 +45,7 @@ def weighed_choice(options):
 
 @command(r'decide (.+)$')
 def decide(bot, server, target, source, message, parsed, private, admin):
-    options = re.split(r'\s*(\sor\s|,)\s*', parsed.group(1), re.IGNORECASE)
+    options = re.split(r'\s*(?:\sor\s|,)\s*', parsed.group(1), re.IGNORECASE)
     if len(options) == 1:
         options = {
             _('Yes.'): 0.4,
@@ -56,7 +56,7 @@ def decide(bot, server, target, source, message, parsed, private, admin):
             _('Outlook hazy.'): 0.05
         }
     else:
-        options = {option: 1 for option in options}
+        options = {option.strip(): 1 for option in options}
 
     option = weighed_choice(options)
     bot.message(target, _('{targ}: {decision}', targ=source, decision=option))
