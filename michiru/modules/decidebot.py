@@ -43,7 +43,7 @@ def weighed_choice(options):
     i = bisect.bisect(distribution, r)
     return options[i]
 
-@command(r'decide (.+)$')
+@command(r'decide (?:.+\?)?(.+)$')
 def decide(bot, server, target, source, message, parsed, private, admin):
     options = re.split(r'\s*(?:\sor\s|,)\s*', parsed.group(1), re.IGNORECASE)
     if len(options) == 1:
