@@ -2,6 +2,8 @@
 import re
 import json
 import random
+from datetime import datetime
+
 import urbandict
 import wolframalpha
 
@@ -24,8 +26,11 @@ config.item('knowitall.wolfram_api_key', None)
 
 db.table('factoids', {
     'id': db.INT,
+    'server': (db.STRING, db.INDEX),
     'factoid': (db.STRING, db.INDEX),
-    'definition': db.STRING
+    'definition': db.STRING,
+    'author': db.STRING,
+    'time': db.DATETIME
 })
 
 personalities.messages('tsun', {
@@ -77,7 +82,7 @@ def calculate(bot, server, target, source, message, parsed, private, admin):
     definition = get_definition(bot, wanted, sources=['wolframalpha'], source=source, server=server, channel=target)
     bot.message(target, _('{factoid}: {definition}', source=source, factoid=wanted, definition=definition))
 
-@command(r'(\S+) is (.*[^\?])$')
+@command(r'(\S+) is (.*[^\?])$', fallback=True)
 def define(bot, server, target, source, message, parsed, private, admin):
     factoid = parsed.group(1)
     definition = parsed.group(2).strip()
@@ -85,10 +90,13 @@ def define(bot, server, target, source, message, parsed, private, admin):
     if factoid in ('what', 'who', 'where', 'how', 'why'):
         return
 
-    db.from_('factoids').where('factoid', factoid).delete()
+    db.from_('factoids').where('factoid', factoid).and_('server', server).delete()
     db.to('factoids').add({
+        'server': server,
         'factoid': factoid,
-        'definition': definition
+        'definition': definition,
+        'author': source,
+        'time': datetime.now()
     })
 
     bot.message(target, _('{factoid} defined.', source=source, factoid=factoid, definition=definition))
@@ -97,7 +105,7 @@ def define(bot, server, target, source, message, parsed, private, admin):
 def undefine(bot, server, target, source, message, parsed, private, admin):
     factoid = parsed.group(1)
 
-    if db.from_('factoids').where('factoid', factoid).delete():
+    if db.from_('factoids').where('factoid', factoid).and_('server', server).delete():
         bot.message(target, _('{factoid} deleted.', source=source, factoid=factoid))
     else:
         bot.message(target, _('Unknown definition: {factoid}', source=source, factoid=factoid))
@@ -117,7 +125,7 @@ def get_definition(bot, wanted, sources=['builtin', 'factoids', 'urbandictionary
 
     # User-defined factoids.
     if not definition and 'factoids' in sources:
-        query = db.from_('factoids').where('factoid', wanted).single('definition')
+        query = db.from_('factoids').where('factoid', wanted).and_('server', server).single('definition')
         if query:
             definition = query['definition']
 
