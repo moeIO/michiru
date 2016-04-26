@@ -37,7 +37,7 @@ def weighed_choice(options):
     options, weights = list(options.keys()), list(options.values())
 
     total = sum(weights)
-    distribution = itertools.accumulate(weights)
+    distribution = list(itertools.accumulate(weights))
 
     r = random.random() * total
     i = bisect.bisect(distribution, r)
