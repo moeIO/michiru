@@ -3,6 +3,7 @@ import re
 import wolframalpha
 from michiru import config, personalities
 from michiru.modules import command
+_ = personalities.localize
 
 
 ## Module information.
