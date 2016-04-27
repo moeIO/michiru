@@ -64,7 +64,7 @@ def undefine(bot, server, target, source, message, parsed, private, admin):
         bot.message(target, _('Unknown definition: {factoid}', source=source, factoid=factoid))
 
 def define_factoid(definition, bot, source, server, channel):
-    query = db.from_('factoids').where('factoid', wanted).and_('server', server).single('definition')
+    query = db.from_('factoids').where('factoid', definition).and_('server', server).single('definition')
     if query:
         return query['definition']
 
