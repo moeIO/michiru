@@ -79,7 +79,7 @@ def commands_for(server, channel):
             else:
                 enabledcmds.append((name, pattern, cmd, bare, fallback))
 
-    return enabledcmds + fallbackcmds
+    return enabledcmds + sorted(fallbackcmds, key=lambda x: len(x[1].pattern), reverse=True)
 
 
 ## Module enabling/disabling.
