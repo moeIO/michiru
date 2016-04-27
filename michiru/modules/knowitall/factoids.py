@@ -29,7 +29,9 @@ personalities.messages('tsun', {
     '{factoid} deleted.':
         'gotcha!',
     'Unknown definition: {factoid}':
-        'I-I didn\'t know much about {factoid} in the first place... (´･ω･`)'
+        'I-I didn\'t know much about {factoid} in the first place... (´･ω･`)',
+    'You can\'t define yourself.':
+        'Nice try! ( ﾟ ヮﾟ)'
 })
 
 
@@ -42,6 +44,8 @@ def define(bot, server, target, source, message, parsed, private, admin):
 
     if factoid in ('what', 'who', 'where', 'how', 'why'):
         return
+    if source == factoid:
+        bot.message(target, _('You can\'t define yourself.', factoid=factoid))
 
     db.from_('factoids').where('factoid', factoid).and_('server', server).delete()
     db.to('factoids').add({
