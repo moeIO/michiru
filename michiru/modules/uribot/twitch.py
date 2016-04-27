@@ -13,7 +13,7 @@ __license__ = 'WTFPL'
 __desc__ = 'Gives URL information for Twitch links.'
 __deps__ = ['uribot']
 
-config.item('uribot.api.twitch', None)
+config.item('api.twitch.client_id', None)
 URI_REGEXP = re.compile(r'^https?://(?:www\.)?twitch\.tv/([a-zA-Z0-0_-]+)$')
 
 
@@ -33,11 +33,11 @@ def uri_twitch(contents, matches):
 def load():
     from michiru.modules import uribot
     uribot.URI_HANDLERS[URI_REGEXP] = {
-        'enabled': lambda: config.get('uribot.api.twitch'),
+        'enabled': lambda: config.get('api.twitch.client_id'),
         'handler': uri_twitch,
         'replacement': r'https://api.twitch.tv/kraken/channels/\1',
         'headers': {
-            'Client-ID': config.get('uribot.api.twitch'),
+            'Client-ID': config.get('api.twitch.client_id'),
             'Accept': 'application/vnd.twitchtv.v3+json'
         }
     }

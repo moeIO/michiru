@@ -13,7 +13,7 @@ __license__ = 'WTFPL'
 __desc__ = 'Gives URL information for SoundCloud links.'
 __deps__ = ['uribot']
 
-config.item('uribot.api.soundcloud', None)
+config.item('api.soundcloud.client_id', None)
 URI_REGEXP = re.compile(r'^https?://(?:www\.)?soundcloud\.com/([a-zA-Z0-9_-]+)/([a-zA-Z0-9_-]+)$')
 
 
@@ -33,9 +33,9 @@ def uri_soundcloud(contents, matches):
 def load():
     from michiru.modules import uribot
     uribot.URI_HANDLERS[URI_REGEXP] = {
-        'enabled': lambda: config.get('uribot.api.soundcloud'),
+        'enabled': lambda: config.get('api.soundcloud.client_id'),
         'handler': uri_soundcloud,
-        'replacement': r'https://api.soundcloud.com/resolve.json?url=https://soundcloud.com/\1/\2&client_id={}'.format(config.get('uribot.api.soundcloud'))
+        'replacement': r'https://api.soundcloud.com/resolve.json?url=https://soundcloud.com/\1/\2&client_id={}'.format(config.get('api.soundcloud.client_id'))
     }
 
 def unload():
