@@ -63,4 +63,4 @@ def load():
 
 def unload():
     from michiru.modules import knowitall
-    knowitall.deregister(10, 'Wolfram|Alpha', define_wolframalpha)
+    knowitall.unregister(10, 'Wolfram|Alpha', define_wolframalpha)

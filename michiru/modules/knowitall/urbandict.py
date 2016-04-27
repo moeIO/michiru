@@ -31,4 +31,4 @@ def load():
 
 def unload():
     from michiru.modules import knowitall
-    knowitall.deregister(5, 'Urban Dictionary', define_urbandict)
+    knowitall.unregister(5, 'Urban Dictionary', define_urbandict)

@@ -79,4 +79,4 @@ def load():
 
 def unload():
     from michiru.modules import knowitall
-    knowitall.deregister(1, 'factoids', define_factoid)
+    knowitall.unregister(1, 'factoids', define_factoid)
