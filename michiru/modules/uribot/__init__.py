@@ -42,7 +42,11 @@ def uri_title(contents, matches):
     # Very basic stuff, thanks to BeautifulSoup.
     if not html.title:
         return None
-    return 'Title', html.title.string.strip(), ''
+    title = html.title.string.strip()
+    title = title.replace('\n', ' ')
+    title = re.sub(r'\s+', ' ', title)
+
+    return 'Title', title, None
 
 
 
