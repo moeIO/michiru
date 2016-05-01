@@ -3,7 +3,7 @@ import re
 import json
 import bs4
 
-from michiru import modules
+from michiru import modules, personalities
 
 
 ## Module information.
