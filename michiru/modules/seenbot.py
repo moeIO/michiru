@@ -94,7 +94,7 @@ def log(server, nick, what, **data):
 
     db.to('seen').add({
         'server': server,
-        'nickname': nick,
+        'nickname': nick.lower(),
         'action': what,
         'data': json.dumps(data),
         'time': datetime.now()
@@ -122,7 +122,7 @@ def seen(bot, server, target, source, message, parsed, private, admin):
         return
 
     # Do we have an entry for this nick?
-    entry = db.from_('seen').where('nickname', nick).and_('server', server).single('action', 'data', 'time')
+    entry = db.from_('seen').where('nickname', nick.lower()).and_('server', server).single('action', 'data', 'time')
     if not entry:
         bot.message(target, _("I don't know who {nick} is.", serv=server, nick=nick))
         return
