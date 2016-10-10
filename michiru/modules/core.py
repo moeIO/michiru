@@ -113,9 +113,9 @@ personalities.messages('tsun', {
     'Already ignoring {nick} on channel {chan}.':
         'Michiru al~ready knows {nick} sucks!',
     '{nick} added to ignore list.':
-        'Yea, they are the WO~RST! ┌(`～´；)┐',
+        'Yeah, they are the WO~RST! ┌(`～´；)┐',
     '{nick} added to ignore list for channel {chan}.':
-        'Yea, they are the WO~RST! ┌(`～´；)┐',
+        'Yeah, they are the WO~RST! ┌(`～´；)┐',
     'Not ignoring {nick}.':
         'I\'m not ignoring {nick}! S-should I...? (´･ω･`)',
     'Not ignoring {nick} on channel {chan}.':
@@ -124,10 +124,14 @@ personalities.messages('tsun', {
         'I-I guess {nick} can be pretty alright... b-but only because you say so!',
     '{nick} removed from ignore list for channel {chan}.':
         'I-I guess {nick} can be pretty alright... b-but only because you say so!',
+    'Currently ignoring: {ignores}':
+        'Fuck {ignores}!',
+    'Not ignoring anyone right now.':
+        'Everyone\'s okay by me! ( ¯◡◡¯·)',
     'Help yourself.':
         'Michiru ごめん！ I really don\'t know anything right now... ㅠ_ㅠ',
     'My source is at {src}.':
-        'I s-suppose you could find me at {src}... but don\'t look too closely, you CREEP! (/ω＼)',
+        'I s-suppose you could find me at {src}... but don\'t look too closely, CREEP! (/ω＼)',
     'This is {n} v{v}, ready to serve.':
         '{n} Ver.{v} でーす！ ヽ( ˃ ヮ˂)ノ',
     '"psutil" module not found.':
@@ -330,6 +334,28 @@ def quit(bot, server, target, source, message, parsed, private, admin):
 
 ## Ignore/unignore commands.
 
+@command(r'(?:give|list) (?:fuck|ignore)s(?: (#\S+|everywhere))?\.?')
+def ignores(bot, server, target, source, message, parsed, private, admin):
+    chan = parsed.group(1)
+    if chan == 'everywhere':
+        chan = None
+    elif chan is None:
+        chan = target
+
+    ignores = []
+    for w in bot.michiru_ignores:
+        if isinstance(w, tuple):
+            w, ch = w
+        else:
+            ch = None
+        if not ch or ch == chan:
+            ignores.append(w)
+
+    if ignores:
+        bot.message(target, _('Currently ignoring: {ignores}', ignores=', '.join(ignores)))
+    else:
+        bot.message(target, _('Not ignoring anyone right now.'))
+
 @command(r'(?:ignore|fuck) (\S+)(?: (#\S+|everywhere))?\.?')
 @restricted
 def ignore(bot, server, target, source, message, parsed, private, admin):
@@ -351,7 +377,7 @@ def ignore(bot, server, target, source, message, parsed, private, admin):
         bot.ignore(nick, chan)
         bot.message(target, _('{nick} added to ignore list for channel {chan}.', nick=nick, chan=chan))
 
-@command(r'unignore (\S+)(?: (#\S+|everywhere))?')
+@command(r'un(?:ignore|fuck) (\S+)(?: (#\S+|everywhere))?')
 @command(r'stop ignoring (\S+)(?: (?:on (\S+)|(everywhere))?)?\.?')
 @command(r'(\S+)(?: i|\')s cool(?: (?:on (\S+)|(everywhere))?)?\.?')
 @restricted
@@ -556,7 +582,7 @@ def stats(bot, server, target, source, message, parsed, private, admin):
         order = math.floor(math.log(n, 2) / 10)
         n /= math.pow(2, order * 10)
         if order:
-            return '{n}{u} iB'.format(n=round(n, 2), u=orders[order - 1])
+            return '{n} {u}iB'.format(n=round(n, 2), u=orders[order - 1])
         return '{n} B'.format(n=n)
 
     # And dump info.
