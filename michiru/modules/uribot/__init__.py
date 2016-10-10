@@ -35,12 +35,17 @@ URI_REGEXP = re.compile(r"""(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-
 
 ## URI handlers.
 
-def uri_title(contents, matches):
+def uri_title(response, matches):
     """ Extract a regular URL title. """
-    html = bs4.BeautifulSoup(contents)
+    content_type = response.headers.get('content-type', 'text/html')
+    content_type = content_type.split(';')[0].strip().lower()
+    if content_type not in ('text/html', 'text/xml', 'text/xhtml', 'application/xml', 'application/xhtml+xml'):
+        return None
+
+    html = bs4.BeautifulSoup(response.text)
 
     # Very basic stuff, thanks to BeautifulSoup.
-    if not html.title:
+    if not html.title or not html.title.string:
         return None
     title = html.title.string.strip()
     title = title.replace('\n', ' ')
@@ -80,6 +85,7 @@ def uri(bot, server, target, source, message, parsed, private, admin):
         # Stock handler: extract the URI.
         handler = uri_title
         headers = {}
+
         # See if we want a custom handler.
         for matcher, details in URI_HANDLERS.items():
             if not details.get('enabled', lambda: True)():
@@ -95,10 +101,11 @@ def uri(bot, server, target, source, message, parsed, private, admin):
                 handler = details['handler']
                 break
 
+
         # Do request.
         headers.setdefault('User-Agent', config.get('uribot.user_agent', server, target))
         try:
-            response = requests.get(uri, headers=headers)
+            response = requests.get(uri, headers=headers, stream=True, timeout=1)
         except:
             traceback.print_exc()
             if config.get('uribot.verbose_errors', server, target):
@@ -111,7 +118,7 @@ def uri(bot, server, target, source, message, parsed, private, admin):
 
         # Parse response.
         try:
-            res = handler(response.text, matches)
+            res = handler(response, matches)
             if not res:
                 continue
         except:

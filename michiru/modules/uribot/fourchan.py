@@ -19,9 +19,9 @@ URI_REGEXP = re.compile(r'^https?://boards\.4chan\.org/([a-z0-9]+)/thread/([0-9]
 
 ## Module.
 
-def uri_4chan(contents, matches):
+def uri_4chan(response, matches):
     """ Extract 4chan thread information. """
-    thread = json.loads(contents)
+    thread = json.loads(response.text)
 
     # Check if we want to actually have a linked post instead of the OP.
     wanted = None

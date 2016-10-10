@@ -18,9 +18,9 @@ URI_REGEXP = re.compile(r'^https?://danbooru.donmai.us/posts/([0-9]+)(?:\?.*)?$'
 
 ## Module.
 
-def uri_danbooru(contents, matches):
+def uri_danbooru(response, matches):
     """ Extract Danbooru post information. """
-    post = json.loads(contents)
+    post = json.loads(response.text)
 
     url = 'http://danbooru.donmai.us{}'.format(post['file_url'])
     artists = [tag.replace('_', ' ').title() for tag in post['tag_string_artist'].split()]

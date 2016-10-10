@@ -18,9 +18,9 @@ URI_REGEXP = re.compile(r'^(https?://(?:.*?\.){0,1}reddit\.com/r/([a-zA-Z0-9_-]+
 
 ## Module.
 
-def uri_reddit(contents, matches):
+def uri_reddit(response, matches):
     """ Extract Reddit thread information. """
-    post, comments = json.loads(contents)
+    post, comments = json.loads(response.text)
     subreddit = matches.group(2)
 
     # Do we want the OP or a specific reply?

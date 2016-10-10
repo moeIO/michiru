@@ -19,9 +19,9 @@ URI_REGEXP = re.compile(r'^https?://(?:www\.)?twitch\.tv/([a-zA-Z0-0_-]+)$')
 
 ## Module.
 
-def uri_twitch(contents, matches):
+def uri_twitch(response, matches):
     """ Extract Twitch.tv channel information. """
-    channel = json.loads(contents)
+    channel = json.loads(response.text)
 
     title = channel['status'].replace('\n', ' ')
     title = re.sub(r'\s+', ' ', title).strip()

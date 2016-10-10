@@ -19,9 +19,9 @@ URI_REGEXP = re.compile(r'^https?://(?:www\.)?soundcloud\.com/([a-zA-Z0-9_-]+)/(
 
 ## Module.
 
-def uri_soundcloud(contents, matches):
+def uri_soundcloud(response, matches):
     """ Extract SoundCloud song information. """
-    song = json.loads(contents)
+    song = json.loads(response.text)
 
     title = song['title'].replace('\n', ' ')
     title = re.sub(r'\s+', ' ', title).strip()
