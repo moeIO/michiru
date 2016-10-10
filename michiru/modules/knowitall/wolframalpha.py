@@ -35,12 +35,12 @@ def define_wolframalpha(definition, bot, source, server, channel):
 
     defs = []
     for pod in res.pods:
-        if pod.title == 'Input interpretation':
+        if pod.title in ('Input', 'Input interpretation'):
             continue
 
         text = pod.text
         if text:
-            if pod.title and pod.title != 'Result' and pod.title != 'Input interpretation':
+            if pod.title and pod.title not in ('Result', 'Response', 'Answer') and 'approximation' not in pod.title:
                 text = '{b}[{title}]{/b} '.format(title=pod.title, **personalities.IRC_CODES) + text
             text = text.strip()
             # Reorder formatting a bit. WolframAlpha uses \:<unicode code> to represent unicode characters.
@@ -52,6 +52,8 @@ def define_wolframalpha(definition, bot, source, server, channel):
             text = re.sub(r' - \(', ' (', text)
             text = re.sub(r'\s+', ' ', text)
             defs.append(text)
+            if not pod.title or pod.title in ('Result', 'Response', 'Answer') or 'approximation' in pod.title:
+                break
 
     if defs:
         return ' | '.join(defs)
