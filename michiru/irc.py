@@ -308,6 +308,7 @@ class IRCBot(pydle.Client):
                     except Exception as e:
                         self.message(source, _('Error while executing [{mod}:{cmd}]: {err}', mod=module, cmd=cmd.__name__, err=e))
                         traceback.print_exc()
+                        break
             elif matched_nick:
                 matched_message = matcher.match(parsed_message)
                 # Dito.
@@ -318,6 +319,7 @@ class IRCBot(pydle.Client):
                     except Exception as e:
                         self.message(source, _('Error while executing [{mod}:{cmd}]: {err}', mod=module, cmd=cmd.__name__, err=e))
                         traceback.print_exc()
+                        break
 
         # And execute hooks.
         try:
