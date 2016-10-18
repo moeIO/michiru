@@ -92,7 +92,7 @@ def _overrides(item, server=None, channel=None):
     if _has(item):
         res.append(current)
     if server and server in current['_overrides']['servers'] and _has(item, current['_overrides']['servers'][server]):
-        res.append(current['_overrides'][server])
+        res.append(current['_overrides']['servers'][server])
     if server and channel and server in current['_overrides']['channels'] and channel in current['_overrides']['channels'][server] and _has(item, current['_overrides']['channels'][server][channel]):
         res.append(current['_overrides']['channels'][server][channel])
     return res
