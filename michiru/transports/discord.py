@@ -112,18 +112,20 @@ class DiscordClient(discord.Client):
         mention = self.user.mention
         prefixes = config.get('command_prefixes', server=tag)
 
+        ccontents = message.clean_content
+        for user in message.mentions:
+            ccontents = ccontents.replace('@{}'.format(user.display_name), user.display_name)
+
         if contents.startswith(mention):
             highlight = True
-            parsed_contents = contents.replace(mention, '').lstrip(';:, ')
-        elif any(contents.startswith(p) for p in prefixes):
+            parsed_contents = ccontents.replace('{}'.format(server.me.display_name), '').lstrip(';:, ')
+        elif any(ccontents.startswith(p) for p in prefixes):
             highlight = True
-            parsed_contents = contents.lstrip(''.join(prefixes))
+            parsed_contents = ccontents.lstrip(''.join(prefixes))
 
         admin = yield from self.michiru_transports[tag].is_admin(source.name, chan=None if private else target.name)
-        yield from self.michiru_transports[tag].run_commands(target.name, source.name, contents, parsed_contents, highlight, private)
-
-        clean_contents = message.clean_content
-        yield from events.emit('chat.message', self.michiru_transports[tag], tag, target.name, source.name, clean_contents, private, admin)
+        yield from self.michiru_transports[tag].run_commands(target.name, source.name, ccontents, parsed_contents, highlight, private)
+        yield from events.emit('chat.message', self.michiru_transports[tag], tag, target.name, source.name, ccontents, private, admin)
 
     @asyncio.coroutine
     def on_member_join(self, member):
