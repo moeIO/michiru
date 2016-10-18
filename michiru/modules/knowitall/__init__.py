@@ -36,13 +36,9 @@ personalities.messages('tsun', {
 
 ## Commands.
 
-@command('(\S+)[:,] (.+)$', fallback=True, bare=True)
+@command('(.+)$', fallback=True)
 def raw_whatis(bot, server, target, source, message, parsed, private, admin):
-    addressed = parsed.group(1)
-    wanted = parsed.group(2).strip()
-
-    if addressed.lower() != bot.nickname.lower():
-        return
+    wanted = parsed.group(1).strip()
 
     definition = yield from get_definition(bot, wanted, source=source, server=server, channel=target)
     yield from bot.message(target, _(bot, '{factoid}: {definition}', source=source, factoid=wanted, definition=definition))
