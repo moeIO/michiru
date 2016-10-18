@@ -16,7 +16,7 @@ class DiscordPool:
             self.clients[token] = DiscordClient(self.loop)
             self.loop.run_until_complete(self.clients[token].login(token))
 
-        transport = DiscordTransport(info['name'], info, self.loop)
+        transport = DiscordTransport(tag, info, self.loop)
         transport.client = self.clients[token]
         transport.client.register_server(tag, info, transport)
         return transport
@@ -59,7 +59,13 @@ class DiscordClient(discord.Client):
 
     @asyncio.coroutine
     def on_server_join(self, server):
-        yield from self.michiru_sync_server(server.name)
+        yield from self.michiru_sync_server(self.michiru_get_tag(server))
+
+    def michiru_get_tag(self, server):
+        for tag, s in self.michiru_server_mapping.items():
+            if server == s:
+                return tag
+        return None
 
     @asyncio.coroutine
     def michiru_sync_server(self, tag):
@@ -81,7 +87,7 @@ class DiscordClient(discord.Client):
             self.michiru_user_mapping[user.name] = user
 
         for channel in server.channels:
-            self.michiru_channel_mapping[server.name][channel.name] = channel
+            self.michiru_channel_mapping[tag][channel.name] = channel
             if channel.type in (discord.ChannelType.voice, discord.ChannelType.private):
                 continue
             if new:
@@ -90,6 +96,7 @@ class DiscordClient(discord.Client):
     @asyncio.coroutine
     def on_message(self, message):
         server = message.server
+        tag = self.michiru_get_tag(server)
         target = message.channel
         source = message.author
         private = False
@@ -103,7 +110,7 @@ class DiscordClient(discord.Client):
         contents = parsed_contents = message.content
         highlight = False
         mention = self.user.mention
-        prefixes = config.get('command_prefixes', server=server.name)
+        prefixes = config.get('command_prefixes', server=tag)
 
         if contents.startswith(mention):
             highlight = True
@@ -112,43 +119,47 @@ class DiscordClient(discord.Client):
             highlight = True
             parsed_contents = contents.lstrip(''.join(prefixes))
 
-        admin = yield from self.michiru_transports[server.name].is_admin(source.name, chan=None if private else target.name)
-        yield from self.michiru_transports[server.name].run_commands(target.name, source.name, contents, parsed_contents, highlight, private)
+        admin = yield from self.michiru_transports[tag].is_admin(source.name, chan=None if private else target.name)
+        yield from self.michiru_transports[tag].run_commands(target.name, source.name, contents, parsed_contents, highlight, private)
 
         clean_contents = message.clean_content
-        yield from events.emit('chat.message', self.michiru_transports[server.name], server.name, target.name, source.name, clean_contents, private, admin)
+        yield from events.emit('chat.message', self.michiru_transports[tag], tag, target.name, source.name, clean_contents, private, admin)
 
     @asyncio.coroutine
     def on_member_join(self, member):
         server = member.server
-        transport = self.michiru_transports[server.name]
+        tag = self.michiru_get_tag(server)
+        transport = self.michiru_transports[tag]
 
-        for chan in self.michiru_channel_mapping[server.name].values():
+        for chan in self.michiru_channel_mapping[tag].values():
             if chan.type in (discord.ChannelType.voice, discord.ChannelType.private):
                 continue
             if chan.type == discord.ChannelType.text or (chan.type == discord.ChannelType.group and member in chan.recipients):
-                yield from events.emit('chat.join', transport, server.name, chan.name, member.name)
+                yield from events.emit('chat.join', transport, tag, chan.name, member.name)
 
     @asyncio.coroutine
     def on_group_join(self, channel, user):
         server = channel.server
-        transport = self.michiru_transports[server.name]
+        tag = self.michiru_get_tag(server)
+        transport = self.michiru_transports[tag]
 
-        yield from events.emit('chat.join', transport, server.name, channel.name, user.name)
+        yield from events.emit('chat.join', transport, tag, channel.name, user.name)
 
     @asyncio.coroutine
     def on_group_remove(self, channel, user):
         server = channel.server
-        transport = self.michiru_transports[server.name]
+        tag = self.michiru_get_tag(server)
+        transport = self.michiru_transports[tag]
 
-        yield from events.emit('chat.part', transport, server.name, channel.name, user.name, None)
+        yield from events.emit('chat.part', transport, tag, channel.name, user.name, None)
 
     @asyncio.coroutine
     def on_member_ban(self, member):
         server = member.server
-        transport = self.michiru_transports[server.name]
+        tag = self.michiru_get_tag(server)
+        transport = self.michiru_transports[tag]
 
-        yield from events.emit('chat.disconnect', transport, server.name, member.name, 'Banned')
+        yield from events.emit('chat.disconnect', transport, tag, member.name, 'Banned')
 
     @asyncio.coroutine
     def on_member_unban(self, member):
@@ -157,34 +168,38 @@ class DiscordClient(discord.Client):
     @asyncio.coroutine
     def on_member_update(self, before, after):
         server = after.server
-        transport = self.michiru_transports[server.name]
+        tag = self.michiru_get_tag(server)
+        transport = self.michiru_transports[tag]
 
     @asyncio.coroutine
     def on_channel_create(self, channel):
         server = channel.server
-        transport = self.michiru_transports[server.name]
+        tag = self.michiru_get_tag(server)
+        transport = self.michiru_transports[tag]
 
-        yield from events.emit('chat.join', transport, server.name, channel.name, server.me.name)
+        yield from events.emit('chat.join', transport, tag, channel.name, server.me.name)
 
     @asyncio.coroutine
     def on_channel_delete(self, channel):
         server = channel.server
-        transport = self.michiru_transports[server.name]
+        tag = self.michiru_get_tag(server)
+        transport = self.michiru_transports[tag]
 
-        yield from events.emit('chat.join', transport, server.name, channel.name, server.me.name, 'Channel deleted')
+        yield from events.emit('chat.join', transport, tag, channel.name, server.me.name, 'Channel deleted')
 
     @asyncio.coroutine
     def on_channel_update(self, before, after):
         server = after.server
-        transport = self.michiru_transports[server.name]
+        tag = self.michiru_get_tag(server)
+        transport = self.michiru_transports[tag]
 
         if before.name != after.name:
-            self.michiru_channel_mapping[server.name][after.name] = after
-            del self.michiru_channel_mapping[server.name][before.name]
-            yield from events.emit('chat.channelchange', transport, server.name, before.name, after.name)
+            self.michiru_channel_mapping[tag][after.name] = after
+            del self.michiru_channel_mapping[tag][before.name]
+            yield from events.emit('chat.channelchange', transport, tag, before.name, after.name)
 
         if before.topic != after.topic:
-            yield from events.emit('chat.topicchange', transport, server.name, after.name, None, after.topic)
+            yield from events.emit('chat.topicchange', transport, tag, after.name, None, after.topic)
 
 
 
