@@ -14,6 +14,7 @@ __name__ = 'knowitall.wolframalpha.appid'
 __author__ = 'Shiz'
 __license__ = 'WTFPL'
 __desc__ = 'Get knowledge from Wolfram|Alpha.'
+__deps__ = ['knowitall']
 
 
 ## Configuration.

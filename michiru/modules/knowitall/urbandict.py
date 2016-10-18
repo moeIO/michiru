@@ -10,6 +10,7 @@ __name__ = 'knowitall.urbandict'
 __author__ = 'Shiz'
 __license__ = 'WTFPL'
 __desc__ = 'Get (questionable) knowledge from Urban Dictionary.'
+__deps__ = ['knowitall']
 
 
 ## Module.

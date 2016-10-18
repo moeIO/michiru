@@ -14,6 +14,7 @@ __name__ = 'knowitall.factoids'
 __author__ = 'Shiz'
 __license__ = 'WTFPL'
 __desc__ = 'Get knowledge from stored factoids.'
+__deps__ = ['knowitall']
 
 db.table('factoids', {
     'id': db.INT,
