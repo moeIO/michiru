@@ -69,13 +69,16 @@ def remind(bot, server, target, source, message, parsed, private, admin):
 
     # If this is a timed reminder, set a timer.
     if when:
-        timeout = (when - datetime.now()).total_seconds()
-        bot.loop.call_later(timeout, do_remind, bot, id)
-        when = _(bot, 'on {when}'.format(when=when))
+        fwhen = _(bot, 'on {when}'.format(when=when))
     else:
-        when = _(bot, 'A.S.A.P.')
+        fwhen = _(bot, 'A.S.A.P.')
 
-    yield from bot.message(target, _(bot, 'Reminder added.', to=targ, when=when))
+    yield from bot.message(target, _(bot, 'Reminder added.', to=bot.highlight(targ), when=fwhen))
+
+    if when:
+        timeout = (when - datetime.now()).total_seconds()
+        yield from asyncio.sleep(timeout)
+        yield from do_remind(bot, id)
 
 @hook('chat.join')
 def join(bot, server, channel, who):
@@ -142,7 +145,7 @@ def check_reminders(bot, server, channel, who):
 
     for reminder in reminders:
         # Tell user...
-        yield from bot.message(channel, _(bot, '{targ}: <{src}> {msg}', targ=bot.highlight(who), src=reminder['from'], msg=reminder['message']))
+        yield from bot.message(channel, _(bot, '{targ}: <{src}> {msg}', targ=bot.highlight(who), src=bot.highlight(reminder['from']), msg=reminder['message']))
         # ... and remove reminder.
         db.from_('reminders').where('id', reminder['id']).delete()
 
@@ -156,7 +159,7 @@ def do_remind(bot, id):
         return
 
     # Tell user.
-    yield from bot.message(reminder['channel'], _(bot, '{targ}: <{src}> {msg}', targ=reminder['to'], src=reminder['from'], msg=reminder['message']))
+    yield from bot.message(reminder['channel'], _(bot, '{targ}: <{src}> {msg}', targ=bot.highlight(reminder['to']), src=bot.highlight(reminder['from']), msg=reminder['message']))
     # Remove reminder.
     db.from_('reminders').where('id', id).delete()
 
