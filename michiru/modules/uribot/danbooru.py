@@ -18,7 +18,7 @@ URI_REGEXP = re.compile(r'^https?://danbooru.donmai.us/posts/([0-9]+)(?:\?.*)?$'
 
 ## Module.
 
-def uri_danbooru(response, matches):
+def uri_danbooru(bot, response, matches):
     """ Extract Danbooru post information. """
     post = json.loads(response.text)
 

@@ -1,6 +1,7 @@
 # Know-it-all factoids module.
 import re
 from datetime import datetime
+import asyncio
 
 from michiru import db, personalities
 from michiru.modules import command
@@ -45,7 +46,7 @@ def define(bot, server, target, source, message, parsed, private, admin):
     if factoid in ('what', 'who', 'where', 'how', 'why'):
         return
     if source == factoid:
-        bot.message(target, _('You can\'t define yourself.', factoid=factoid))
+        yield from bot.message(target, _(bot, 'You can\'t define yourself.', factoid=factoid))
 
     db.from_('factoids').where('factoid', factoid).and_('server', server).delete()
     db.to('factoids').add({
@@ -56,17 +57,18 @@ def define(bot, server, target, source, message, parsed, private, admin):
         'time': datetime.now()
     })
 
-    bot.message(target, _('{factoid} defined.', source=source, factoid=factoid, definition=definition))
+    yield from bot.message(target, _(bot, '{factoid} defined.', source=source, factoid=factoid, definition=definition))
 
 @command(r'forget about (\S+)$')
 def undefine(bot, server, target, source, message, parsed, private, admin):
     factoid = parsed.group(1)
 
     if db.from_('factoids').where('factoid', factoid).and_('server', server).delete():
-        bot.message(target, _('{factoid} deleted.', source=source, factoid=factoid))
+        yield from bot.message(target, _(bot, '{factoid} deleted.', source=source, factoid=factoid))
     else:
-        bot.message(target, _('Unknown definition: {factoid}', source=source, factoid=factoid))
+        yield from bot.message(target, _(bot, 'Unknown definition: {factoid}', source=source, factoid=factoid))
 
+@asyncio.coroutine
 def define_factoid(definition, bot, source, server, channel):
     query = db.from_('factoids').where('factoid', definition).and_('server', server).single('definition')
     if query:

@@ -1,6 +1,7 @@
 # 3-2-1... Anime!
 import re
 import functools
+import asyncio
 
 from michiru import config, db, personalities
 from michiru.modules import command, hook
@@ -27,6 +28,7 @@ db.table('countdowns', {
     'message': db.BINARY
 })
 
+@asyncio.coroutine
 def check_countdown(bot, server, channel, person=None):
     current = db.from_('countdowns').where('server', server).and_('channel', channel).single()
     if not current:
@@ -39,15 +41,13 @@ def check_countdown(bot, server, channel, person=None):
             'people': ','.join(people)
         })
 
-    def do_count(count):
-        bot.message(channel, _('{count}'.format(count=current['count'] - count)))
-
     if not people:
         db.from_('countdowns').where('id', current['id']).delete()
         # Start countdown.
         for count in range(current['count']):
-            bot.eventloop.schedule_in(count, functools.partial(do_count, count))
-        bot.eventloop.schedule_in(current['count'] + 1, lambda: bot.message(channel, _('{countmessage}!', countmessage=current['message'].decode('utf-8'))))
+            yield from bot.message(channel, _(bot, '{count}'.format(count=current['count'] - count)))
+            yield from asyncio.sleep(1)
+        yield from bot.message(channel, _(bot, '{countmessage}!', countmessage=current['message'].decode('utf-8')))
 
 
 ## Commands.
@@ -69,13 +69,13 @@ def countdown(bot, server, target, source, message, parsed, private, admin):
         'count': max(0, min(10, int(parsed.group('count')) if parsed.group('count') else 5)),
         'message': (parsed.group('msg') or 'Go').encode('utf-8')
     })
-    check_countdown(bot, server, target)
+    yield from check_countdown(bot, server, target)
 
-@hook('irc.message')
+@hook('chat.message')
 def message(bot, server, target, who, message, private, admin):
     for ready in config.list('countdown.ready_messages', server, target):
         if re.search(ready, message, re.IGNORECASE):
-            check_countdown(bot, server, target, who)
+            yield from check_countdown(bot, server, target, who)
 
 
 ## Module stuff.

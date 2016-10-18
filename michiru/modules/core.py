@@ -4,9 +4,8 @@ import sys
 import io
 import math
 import functools
-import pydle
 
-from michiru import config, db, irc, modules, personalities, version
+from michiru import config, db, chat, modules, personalities, version
 from michiru.modules import command
 _ = personalities.localize
 
@@ -145,7 +144,7 @@ def restricted(func):
     @functools.wraps(func)
     def inner(bot, server, target, source, message, parsed, private, admin):
         if not admin:
-            raise EnvironmentError(_('This command is restricted to administrators.', cmd=func.__name__))
+            raise EnvironmentError(_(bot, 'This command is restricted to administrators.', cmd=func.__name__))
         else:
             return func(bot, server, target, source, message, parsed, private=private, admin=admin)
     return inner
@@ -163,13 +162,13 @@ def addadmin(bot, server, target, source, message, parsed, private, admin):
         chan = parsed.group(2)
 
     bot.promote(nick, chan)
-    bot.message(target, _('Administrator {nick} added.', nick=nick))
+    yield from bot.message(target, _(bot, 'Administrator {nick} added.', nick=nick))
 
 @command(r'listadmins(?: (\S+))?')
 @command(r'list admins(?: for channel (\S+))?\.?$')
 @restricted
 def listadmins(bot, server, target, source, message, parsed, private, admin):
-    bot.message(target, _('Administrators: {}', ', '.join(bot.admins(parsed.group(1)))))
+    yield from bot.message(target, _(bot, 'Administrators: {}', ', '.join(bot.admins(parsed.group(1)))))
 
 @command(r'rmadmin (\S+)(?: (\S+))?')
 @command(r'remove admin (\S+)(?: from channel (\S+))?\.?$')
@@ -181,7 +180,7 @@ def rmadmin(bot, server, target, source, message, parsed, private, admin):
         chan = parsed.group(2)
 
     bot.demote(nick, chan)
-    bot.message(target, _('Administrator {nick} removed.', nick=nick))
+    yield from bot.message(target, _(bot, 'Administrator {nick} removed.', nick=nick))
 
 
 ## Module commands.
@@ -196,20 +195,20 @@ def enable(bot, server, target, source, message, parsed, private, admin):
         channel = parsed.group(3)
         modules.enable(module, server, channel)
 
-        bot.message(target, _('Module {mod} enabled for channel {chan}.', mod=module, srv=server, chan=channel))
+        yield from bot.message(target, _(bot, 'Module {mod} enabled for channel {chan}.', mod=module, srv=server, chan=channel))
     elif parsed.group(2):
         server = parsed.group(2)
 
         if server != 'global' and server != 'globally':
             modules.enable(module, server)
-            bot.message(target, _('Module {mod} enabled for server {srv}.', mod=module, srv=server))
+            yield from bot.message(target, _(bot, 'Module {mod} enabled for server {srv}.', mod=module, srv=server))
         else:
             modules.enable(module)
-            bot.message(target, _('Module {mod} globally enabled.', mod=module))
+            yield from bot.message(target, _(bot, 'Module {mod} globally enabled.', mod=module))
     else:
         modules.enable(module, server, target)
 
-        bot.message(target, _('Module {mod} enabled for channel {chan}.', mod=module, srv=server, chan=target))
+        yield from bot.message(target, _(bot, 'Module {mod} enabled for channel {chan}.', mod=module, srv=server, chan=target))
 
 @command(r'disable (\S+)(?: (?: on)?(\S+)(?:(?:, channel)? (\S+))?)?\.?')
 @restricted
@@ -220,20 +219,20 @@ def disable(bot, server, target, source, message, parsed, private, admin):
         channel = parsed.group(3)
         modules.disable(module, server, channel)
 
-        bot.message(target, _('Module {mod} disabled for channel {chan}.', mod=module, srv=server, chan=channel))
+        yield from bot.message(target, _(bot, 'Module {mod} disabled for channel {chan}.', mod=module, srv=server, chan=channel))
     elif parsed.group(2):
         server = parsed.group(2)
 
         if server != 'global' and server != 'globally':
             modules.disable(module, server)
-            bot.message(target, _('Module {mod} disabled for server {srv}.', mod=module, srv=server))
+            yield from bot.message(target, _(bot, 'Module {mod} disabled for server {srv}.', mod=module, srv=server))
         else:
             modules.disable(module)
-            bot.message(target, _('Module {mod} globally disabled.', mod=module))
+            yield from bot.message(target, _(bot, 'Module {mod} globally disabled.', mod=module))
     else:
         modules.disable(module, server, target)
 
-        bot.message(target, _('Module {mod} disabled for channel {chan}.', mod=module, srv=server, chan=target))
+        yield from bot.message(target, _(bot, 'Module {mod} disabled for channel {chan}.', mod=module, srv=server, chan=target))
 
 
 @command(r'load (?: the)?(\S+)(?: module)?\.?$')
@@ -241,25 +240,25 @@ def disable(bot, server, target, source, message, parsed, private, admin):
 def load(bot, server, target, source, message, parsed, private, admin):
     module = parsed.group(1)
     modules.load(module)
-    bot.message(target, _('Module {mod} loaded.', mod=module))
+    yield from bot.message(target, _(bot, 'Module {mod} loaded.', mod=module))
 
 @command(r'unload (?:the )?(\S+)(?: module)?(?:(?:the )?hard(?: way)?)?\.?')
 @restricted
 def unload(bot, server, target, source, message, parsed, private, admin):
     module = parsed.group(1)
     modules.unload(module)
-    bot.message(target, _('Module {mod} unloaded.', mod=module))
+    yield from bot.message(target, _(bot, 'Module {mod} unloaded.', mod=module))
 
 @command(r'reload (?:the )?(\S+)(?: module)?\.?')
 @restricted
 def reload(bot, server, target, source, message, parsed, private, admin):
     module = parsed.group(1)
     modules.load(module, reload=True)
-    bot.message(target, _('Module {mod} reloaded.', mod=module))
+    yield from bot.message(target, _(bot, 'Module {mod} reloaded.', mod=module))
 
 @command(r'loaded')
 def loaded(bot, server, target, source, message, parsed, private, admin):
-    bot.message(target, _('Loaded modules: {mods}', mods=', '.join(sorted(modules.modules.keys()))))
+    yield from bot.message(target, _(bot, 'Loaded modules: {mods}', mods=', '.join(sorted(modules.modules.keys()))))
 
 
 ## Join/part servers/channels.
@@ -274,9 +273,9 @@ def join(bot, server, target, source, message, parsed, private, admin):
         target_serv = server
         target_chan = parsed.group(1)
 
-    if not target_serv in irc.bots.keys():
+    if not target_serv in chat.bots.keys():
         raise EnvironmentError(_('Unknown server {srv}.', srv=target_serv))
-    irc.bots[target_serv].join_(target_chan, parsed.group(3))
+    chat.bots[target_serv].join_(target_chan, parsed.group(3))
 
 @command(r'part(?: (\S+)(?: (\S+)(?: (\S+))?)?)?\.?$')
 @restricted
@@ -291,9 +290,9 @@ def part(bot, server, target, source, message, parsed, private, admin):
         target_serv = server
         target_chan = target
 
-    if not target_serv in irc.bots.keys():
+    if not target_serv in chat.bots.keys():
         raise EnvironmentError(_('Unknown server {srv}.', srv=target_serv))
-    irc.bots[target_serv].part(target_chan, parsed.group(3) or _('Parted.'))
+    chat.bots[target_serv].part(target_chan, parsed.group(3) or _(bot, 'Parted.'))
 
 @command(r'connect (\S+)(?: ([0-9]+)(?: (true|false))?)?')
 @command(r'connect to (\S+)(?: with port ([0-9]+)(?: and TLS set to (true|false))?)?\.?$')
@@ -308,27 +307,27 @@ def connect(bot, server, target, source, message, parsed, private, admin):
         info['port'] = int(parsed.group(2))
 
     tag = info['host'].rsplit('.', 2)[1]
-    if tag in irc.bots:
+    if tag in chat.bots:
         raise EnvironmentError(_('Already connected to {tag}.', tag=tag))
 
-    bot.message(target, _('Connecting to {tag}... this might take a while.', tag=tag, host=info['host'], port=info['port']))
+    yield from bot.message(target, _(bot, 'Connecting to {tag}... this might take a while.', tag=tag, host=info['host'], port=info['port']))
     config.current['servers'][tag] = info
 
-    irc.connect(irc.bots, irc.pool, tag, info)
+    chat.connect(tag, info)
 
-    bot.message(target, _('Connected to {tag} successfully.', tag=tag, host=info['host'], port=info['port']))
+    yield from bot.message(target, _(bot, 'Connected to {tag} successfully.', tag=tag, host=info['host'], port=info['port']))
 
 @command(r'(?:quit|gtfo)(?: (\S+)?)?\.?')
 @restricted
 def quit(bot, server, target, source, message, parsed, private, admin):
     if parsed.group(1):
         serv = parsed.group(1)
-        if not serv in irc.bots.keys():
+        if not serv in chat.bots.keys():
             raise EnvironmentError(_('Unknown server {srv}.', srv=serv))
 
-        irc.bots[parsed.group(1)].quit(_('Quit'))
+        chat.bots[parsed.group(1)].quit(_('Quit'))
     else:
-        for bot in irc.bots.values():
+        for bot in chat.bots.values():
             bot.quit(_('Quit'))
 
 
@@ -352,9 +351,9 @@ def ignores(bot, server, target, source, message, parsed, private, admin):
             ignores.append(w)
 
     if ignores:
-        bot.message(target, _('Currently ignoring: {ignores}', ignores=', '.join(ignores)))
+        yield from bot.message(target, _(bot, 'Currently ignoring: {ignores}', ignores=', '.join(ignores)))
     else:
-        bot.message(target, _('Not ignoring anyone right now.'))
+        yield from bot.message(target, _(bot, 'Not ignoring anyone right now.'))
 
 @command(r'(?:ignore|fuck) (\S+)(?: (#\S+|everywhere))?\.?')
 @restricted
@@ -370,12 +369,12 @@ def ignore(bot, server, target, source, message, parsed, private, admin):
         if bot.ignored(nick):
             raise EnvironmentError(_('Already ignoring {nick}.', nick=nick))
         bot.ignore(nick)
-        bot.message(target, _('{nick} added to ignore list.', nick=nick))
+        yield from bot.message(target, _(bot, '{nick} added to ignore list.', nick=nick))
     else:
         if bot.ignored(nick, chan):
             raise EnvironmentError(_('Already ignoring {nick} on channel {chan}.', nick=nick, chan=chan))
         bot.ignore(nick, chan)
-        bot.message(target, _('{nick} added to ignore list for channel {chan}.', nick=nick, chan=chan))
+        yield from bot.message(target, _(bot, '{nick} added to ignore list for channel {chan}.', nick=nick, chan=chan))
 
 @command(r'un(?:ignore|fuck) (\S+)(?: (#\S+|everywhere))?')
 @command(r'stop ignoring (\S+)(?: (?:on (\S+)|(everywhere))?)?\.?')
@@ -393,12 +392,12 @@ def unignore(bot, server, target, source, message, parsed, private, admin):
         if not bot.ignored(nick):
             raise EnvironmentError(_('Not ignoring {nick}.', nick=nick))
         bot.unignore(nick)
-        bot.message(target, _('{nick} removed from ignore list.', nick=nick))
+        yield from bot.message(target, _(bot, '{nick} removed from ignore list.', nick=nick))
     else:
         if not bot.ignored(nick, chan):
             raise EnvironmentError(_('Not ignoring {nick} on channel {chan}.', nick=nick, chan=chan))
         bot.unignore(nick, chan)
-        bot.message(target, _('{nick} removed from ignore list for channel {chan}.', nick=nick, chan=chan))
+        yield from bot.message(target, _(bot, '{nick} removed from ignore list for channel {chan}.', nick=nick, chan=chan))
 
 
 ## Configuration commands.
@@ -408,7 +407,7 @@ def unignore(bot, server, target, source, message, parsed, private, admin):
 @restricted
 def loadconf(bot, server, target, source, message, parsed, private, admin):
     config.load()
-    bot.message(target, _('Configuration loaded.'))
+    yield from bot.message(target, _(bot, 'Configuration loaded.'))
 
 @command(r'saveconf')
 @command(r'save (?:your |the )?configuration\.?$')
@@ -416,7 +415,7 @@ def loadconf(bot, server, target, source, message, parsed, private, admin):
 @restricted
 def saveconf(bot, server, target, source, message, parsed, private, admin):
     config.save()
-    bot.message(target, _('Configuration saved.'))
+    yield from bot.message(target, _(bot, 'Configuration saved.'))
 
 @command(r'set (?:(?:(\S+)\:)?(\S+)\:)?(\S+)(?: to)? (.+)\.?$')
 @restricted
@@ -428,7 +427,7 @@ def set(bot, server, target, source, message, parsed, private, admin):
     serv = serv or server
 
     config.set(name, value, serv, chan)
-    bot.message(target, _('Configuration item {name} set.', name=name))
+    yield from bot.message(target, _(bot, 'Configuration item {name} set.', name=name))
 
 @command(r'add (?:(?:(\S+)\:)?(\S+)\:)?(\S+) (.+)\.?$')
 @restricted
@@ -440,7 +439,7 @@ def add(bot, server, target, source, message, parsed, private, admin):
     serv = serv or server
 
     config.add(name, value, serv, chan)
-    bot.message(target, _('Added value to configuration item {name}.', name=name))
+    yield from bot.message(target, _(bot, 'Added value to configuration item {name}.', name=name))
 
 @command('setitem (?:(?:(\S+)\:)?(\S+)\:)?(\S+) (\S+) (.+)\.?$')
 @restricted
@@ -452,7 +451,7 @@ def setitem(bot, server, target, source, message, parsed, private, admin):
     serv = serv or server
 
     config.setitem(item, name, value, serv, chan)
-    bot.message(target, _('Set key in configuration item {name}.', name=name))
+    yield from bot.message(target, _(bot, 'Set key in configuration item {name}.', name=name))
 
 @command(r'get (?:(?:(\S+)\:)?(\S+)\:)?(\S+)')
 @command(r'what\'s the value of (\S+)\??$')
@@ -464,7 +463,7 @@ def get(bot, server, target, source, message, parsed, private, admin):
     serv = serv or server
 
     val = config.get(name, serv, chan)
-    bot.message(target, _('{name}: {val}', name=name, val=val))
+    yield from bot.message(target, _(bot, '{name}: {val}', name=name, val=val))
 
 @command(r'list (?:(?:(\S+)\:)?(\S+)\:)?(\S+)\.?')
 @restricted
@@ -475,7 +474,7 @@ def list_(bot, server, target, source, message, parsed, private, admin):
     serv = serv or server
 
     val = config.list(name, serv, chan)
-    bot.message(target, _('{name}: {val}', name=name, val=', '.join(val)))
+    yield from bot.message(target, _(bot, '{name}: {val}', name=name, val=', '.join(val)))
 
 @command(r'dict (?:(?:(\S+)\:)?(\S+)\:)?(\S+)')
 @restricted
@@ -487,7 +486,7 @@ def dict_(bot, server, target, source, message, parsed, private, admin):
     serv = serv or server
 
     val = config.dict(name, serv, chan)
-    bot.message(target, _('{name}: {val}', name=name, val=val))
+    yield from bot.message(target, _(bot, '{name}: {val}', name=name, val=val))
 
 
 @command(r'del (?:(?:(\S+)\:)?(\S+)\:)?(\S+) (\S+)')
@@ -499,7 +498,7 @@ def del_(bot, server, target, source, message, parsed, private, admin):
     serv = serv or server
 
     config.delete(name, key, serv, chan)
-    bot.message(target, _('{name}{{{key}}} deleted.', name=name, key=key))
+    yield from bot.message(target, _(bot, '{name}{{{key}}} deleted.', name=name, key=key))
 
 ## Misc commands.
 
@@ -538,7 +537,7 @@ def evaluate(bot, server, target, source, message, parsed, private, admin):
     res = res.strip()
     if res:
         res = res.replace('\n', ' - ')
-        bot.message(target, res)
+        yield from bot.message(target, res)
 
 @command(r'nick (\S+)')
 @command(r'change nick(?:name)? to (\S+)\.?$')
@@ -550,7 +549,7 @@ def nick(bot, server, target, source, message, parsed, private, admin):
 @command(r'commands')
 @command(r'what are your commands\??$')
 def help(bot, server, target, source, message, parsed, private, admin):
-    bot.message(target, _('Help yourself.'))
+    yield from bot.message(target, _(bot, 'Help yourself.'))
 
 @command(r'error (.*)')
 def error(bot, server, target, source, message, parsed, private, admin):
@@ -559,12 +558,12 @@ def error(bot, server, target, source, message, parsed, private, admin):
 @command(r'source')
 @command(r'where (?:is|can I find) your source(?: code)?\??')
 def source(bot, server, target, source, message, parsed, private, admin):
-    bot.message(target, _('My source is at {src}.', src=version.__source__))
+    yield from bot.message(target, _(bot, 'My source is at {src}.', src=version.__source__))
 
 @command(r'version')
 @command(r'wh(?:at|o) are you\??$')
 def version_(bot, server, target, source, message, parsed, private, admin):
-    bot.message(target, _('This is {n} v{v}, ready to serve.', n=version.__name__, v=version.__version__))
+    yield from bot.message(target, _(bot, 'This is {n} v{v}, ready to serve.', n=version.__name__, v=version.__version__))
 
 
 @command(r'stats')
@@ -591,7 +590,7 @@ def stats(bot, server, target, source, message, parsed, private, admin):
         conncount = len(proc.connections('inet'))
     except psutil.AccessDenied:
         conncount = '???'
-    bot.message(target, _('I use: CPU: {cpuperc}%; RAM: {ramused}/{ramtotal} ({ramperc}%); Threads: {threadcount}; Connections: {conncount}',
+    yield from bot.message(target, _(bot, 'I use: CPU: {cpuperc}%; RAM: {ramused}/{ramtotal} ({ramperc}%); Threads: {threadcount}; Connections: {conncount}',
         cpuperc=round(proc.cpu_percent(), 2),
         ramused=si_ify(proc.memory_info()[0]),
         ramtotal=si_ify(psutil.virtual_memory().total),

@@ -1,6 +1,8 @@
 # Know-it-all Wolfram|Alpha module.
 import re
+import asyncio
 import wolframalpha
+
 from michiru import config, personalities
 from michiru.modules import command
 _ = personalities.localize
@@ -26,12 +28,13 @@ def calculate(bot, server, target, source, message, parsed, private, admin):
     from michiru.modules import knowitall
 
     wanted = parsed.group(1).strip()
-    definition = knowitall.get_definition(bot, wanted, sources=['Wolfram|Alpha'], source=source, server=server, channel=target)
-    bot.message(target, _('{factoid}: {definition}', source=source, factoid=wanted, definition=definition))
+    definition = yield from knowitall.get_definition(bot, wanted, sources=['Wolfram|Alpha'], source=source, server=server, channel=target)
+    yield from bot.message(target, _(bot, '{factoid}: {definition}', source=source, factoid=wanted, definition=definition))
 
+@asyncio.coroutine
 def define_wolframalpha(definition, bot, source, server, channel):
     client = wolframalpha.Client(config.get('api.wolframalpha.appid', server, channel))
-    res = client.query(definition)
+    res = yield from bot.loop.run_in_executor(None, client.query, definition)
 
     defs = []
     for pod in res.pods:
@@ -41,7 +44,7 @@ def define_wolframalpha(definition, bot, source, server, channel):
         text = pod.text
         if text:
             if pod.title and pod.title not in ('Result', 'Response', 'Answer') and 'approximation' not in pod.title:
-                text = '{b}[{title}]{/b} '.format(title=pod.title, **personalities.IRC_CODES) + text
+                text = '{b}[{title}]{/b} '.format(title=pod.title, **bot.FORMAT_CODES) + text
             text = text.strip()
             # Reorder formatting a bit. WolframAlpha uses \:<unicode code> to represent unicode characters.
             text = text.replace('\n', ' - ')

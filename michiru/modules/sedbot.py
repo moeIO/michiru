@@ -37,7 +37,7 @@ def sed(bot, server, target, source, message, matched, private, admin):
     # Do we have anything on the source?
     if not (server, target, targ) in last_messages.keys():
         if config.get('sedbot.verbose_errors', server, target):
-            raise EnvironmentError(_('No messages to match.'))
+            raise EnvironmentError(_(bot, 'No messages to match.'))
         return
 
     # Generate flags.
@@ -56,19 +56,19 @@ def sed(bot, server, target, source, message, matched, private, admin):
         expr = re.compile(pattern, re_flags)
         if not expr:
             if config.get('sedbot.verbose_errors', server, target):
-                raise ValueError(_('Invalid regular expression.'))
+                raise ValueError(_(bot, 'Invalid regular expression.'))
             return
     except:
         # Not a valid regexp.
         if config.get('sedbot.verbose_errors', server, target):
-            raise ValueError(_('Invalid regular expression.'))
+            raise ValueError(_(bot, 'Invalid regular expression.'))
         return
 
     # Start matching.
     matched_message = None
     msg = None
     for message in reversed(last_messages[server, target, targ]):
-        msg = expr.sub(_('{b}{repl}{/b}', repl=replacement), message, count=0 if 'g' in flags else 1)
+        msg = expr.sub(_(bot, '{b}{repl}{/b}', repl=replacement), message, count=0 if 'g' in flags else 1)
         if msg != message:
             matched_message = message
             break
@@ -78,13 +78,13 @@ def sed(bot, server, target, source, message, matched, private, admin):
     # No message matched?
     if not msg:
         if config.get('sedbot.verbose_errors', server, target):
-            raise ValueError(_('Could not find matching message.'))
+            raise ValueError(_(bot, 'Could not find matching message.'))
         return
 
-    bot.message(target, _('<{nick}> {ftfy}', nick=targ, ftfy=msg, diff=len(msg) - len(matched_message)))
+    yield from bot.message(target, _(bot, '<{nick}> {ftfy}', nick=bot.highlight(targ), ftfy=msg, diff=len(msg) - len(matched_message)))
 
 # Log messages for later replacement.
-@hook('irc.message')
+@hook('chat.message')
 def log(bot, server, target, who, message, private, admin):
     global last_messages
 

@@ -81,7 +81,7 @@ def shout(bot, server, target, source, message, parsed, private, admin):
             last_shouts[server, target] = id
 
             # Shout it.
-            bot.message(target, to_shout)
+            yield from bot.message(target, to_shout)
 
     # Add shout to database.
     db.to('shouts').add({
@@ -102,7 +102,7 @@ def who_shouted(bot, server, target, source, message, parsed, private, admin):
 
     if wanted == 'last':
         if (server, target) not in last_shouts.keys():
-            bot.message(target, _('No last shout for channel {chan} found.', serv=server, chan=target))
+            yield from bot.message(target, _(bot, 'No last shout for channel {chan} found.', serv=server, chan=target))
             return
         query.where('id', last_shouts[server, target])
     else:
@@ -111,15 +111,15 @@ def who_shouted(bot, server, target, source, message, parsed, private, admin):
     # Look it up.
     shout = query.limit(1).single('shouter', 'time')
     if not shout:
-        bot.message(target, _('Unknown shout for channel {chan}.', serv=server, chan=target))
+        yield from bot.message(target, _(bot, 'Unknown shout for channel {chan}.', serv=server, chan=target))
         return
 
     # Give information.
     shouter, time = shout
     if shouter == source:
-        bot.message(target, _('YOU taught me that (don\'t remember? Put down the bong!) on {date}.', date=time))
+        yield from bot.message(target, _(bot, 'YOU taught me that (don\'t remember? Put down the bong!) on {date}.', date=time))
     else:
-        bot.message(target, _('{nick} taught me that on {date}.', nick=shouter, date=time))
+        yield from bot.message(target, _(bot, '{nick} taught me that on {date}.', nick=bot.highlight(shouter), date=time))
 
 
 ## Boilerplate.

@@ -3,6 +3,8 @@ import re
 import json
 import urllib.parse
 import traceback
+import functools
+import asyncio
 
 import requests
 import bs4
@@ -35,7 +37,7 @@ URI_REGEXP = re.compile(r"""(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-
 
 ## URI handlers.
 
-def uri_title(response, matches):
+def uri_title(bot, response, matches):
     """ Extract a regular URL title. """
     content_type = response.headers.get('content-type', 'text/html')
     content_type = content_type.split(';')[0].strip().lower()
@@ -105,7 +107,7 @@ def uri(bot, server, target, source, message, parsed, private, admin):
         # Do request.
         headers.setdefault('User-Agent', config.get('uribot.user_agent', server, target))
         try:
-            response = requests.get(uri, headers=headers, stream=True, timeout=1)
+            response = yield from bot.loop.run_in_executor(None, functools.partial(requests.get, uri, headers=headers, stream=True, timeout=1))
         except:
             traceback.print_exc()
             if config.get('uribot.verbose_errors', server, target):
@@ -113,12 +115,12 @@ def uri(bot, server, target, source, message, parsed, private, admin):
             continue
         if response.status_code >= 400:
             if config.get('uribot.verbose_errors', server, target):
-                bot.message(target, _('Couldn\'t load URL! Response code: {}'.format(response.status_code)))
+                yield from bot.message(target, _(bot, 'Couldn\'t load URL! Response code: {}'.format(response.status_code)))
             continue
 
         # Parse response.
         try:
-            res = handler(response, matches)
+            res = handler(bot, response, matches)
             if not res:
                 continue
         except:
@@ -131,9 +133,9 @@ def uri(bot, server, target, source, message, parsed, private, admin):
 
         # Post info.
         if meta:
-            bot.message(target, _('[{type}] {b}{title}{/b} ({meta})', type=type, title=title, meta=meta))
+            yield from bot.message(target, _(bot, '[{type}] {b}{title}{/b} ({meta})', type=type, title=title, meta=meta))
         else:
-            bot.message(target, _('[{type}] {b}{title}{/b}', type=type, title=title, meta=meta))
+            yield from bot.message(target, _(bot, '[{type}] {b}{title}{/b}', type=type, title=title, meta=meta))
 
 
 ## Module boilerplate.

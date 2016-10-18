@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta
 import re
 import functools
+import asyncio
 
 from michiru import db, personalities
 from michiru.modules import command, hook
@@ -43,7 +44,7 @@ def remind(bot, server, target, source, message, parsed, private, admin):
     targ = parsed.group(1)
     msg = parsed.group(3)
     if parsed.group(2):
-        when = parse_timespan(parsed.group(2))
+        when = parse_timespan(bot, parsed.group(2))
     else:
         when = None
 
@@ -69,26 +70,26 @@ def remind(bot, server, target, source, message, parsed, private, admin):
     # If this is a timed reminder, set a timer.
     if when:
         timeout = (when - datetime.now()).total_seconds()
-        bot.eventloop.schedule_in(timeout, functools.partial(do_remind, bot, id))
-        when = _('on {when}'.format(when=when))
+        bot.loop.call_later(timeout, do_remind, bot, id)
+        when = _(bot, 'on {when}'.format(when=when))
     else:
-        when = _('A.S.A.P.')
+        when = _(bot, 'A.S.A.P.')
 
-    bot.message(target, _('Reminder added.', to=targ, when=when))
+    yield from bot.message(target, _(bot, 'Reminder added.', to=targ, when=when))
 
-@hook('irc.join')
+@hook('chat.join')
 def join(bot, server, channel, who):
-    check_reminders(bot, server, channel, who)
+    yield from check_reminders(bot, server, channel, who)
 
-@hook('irc.message')
+@hook('chat.message')
 def message(bot, server, target, who, message, private, admin):
     if not private:
-        check_reminders(bot, server, target, who)
+        yield from check_reminders(bot, server, target, who)
 
 
 ## Callback/utility functions.
 
-def parse_timespan(message):
+def parse_timespan(bot, message):
     chunks = re.split(r'\s*(,|and)\s*', message, flags=re.IGNORECASE)
     regexp = re.compile(r'([0-9]+) (\S+)$')
 
@@ -119,18 +120,19 @@ def parse_timespan(message):
     for chunk in chunks:
         matches = regexp.match(chunk)
         if not matches:
-            raise ValueError(_("I don't know what a '{chunk}' is.", chunk=chunk))
+            raise ValueError(_(bot, "I don't know what a '{chunk}' is.", chunk=chunk))
 
         try:
             amount = int(matches.group(1))
             weight = timespans[matches.group(2)]
         except:
-            raise ValueError(_("I don't know what a '{chunk}' is.", chunk=chunk))
+            raise ValueError(_(bot, "I don't know what a '{chunk}' is.", chunk=chunk))
 
         offset += amount * weight
 
     return datetime.now() + timedelta(seconds=offset)
 
+@asyncio.coroutine
 def check_reminders(bot, server, channel, who):
     """ See if there are untimed reminders for user in given channel. """
     reminders = db.from_('reminders').where('server', server).and_('channel', channel) \
@@ -140,10 +142,11 @@ def check_reminders(bot, server, channel, who):
 
     for reminder in reminders:
         # Tell user...
-        bot.message(channel, _('{targ}: <{src}> {msg}', targ=who, src=reminder['from'], msg=reminder['message']))
+        yield from bot.message(channel, _(bot, '{targ}: <{src}> {msg}', targ=bot.highlight(who), src=reminder['from'], msg=reminder['message']))
         # ... and remove reminder.
         db.from_('reminders').where('id', reminder['id']).delete()
 
+@asyncio.coroutine
 def do_remind(bot, id):
     """ Reminder callback. Remind user with reminder with given ID. """
     # Get reminder.
@@ -153,7 +156,7 @@ def do_remind(bot, id):
         return
 
     # Tell user.
-    bot.message(reminder['channel'], _('{targ}: <{src}> {msg}', targ=reminder['to'], src=reminder['from'], msg=reminder['message']))
+    yield from bot.message(reminder['channel'], _(bot, '{targ}: <{src}> {msg}', targ=reminder['to'], src=reminder['from'], msg=reminder['message']))
     # Remove reminder.
     db.from_('reminders').where('id', id).delete()
 

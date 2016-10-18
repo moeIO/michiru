@@ -90,7 +90,7 @@ def timespan(date, current=None, reach=2):
 
 def log(server, nick, what, **data):
     """ Remove earlier entries for `nick` from database and insert new log entry. """
-    db.from_('seen').where('nickname', nick).and_('server', server).delete()
+    db.from_('seen').where('nickname', nick.lower()).and_('server', server).delete()
 
     db.to('seen').add({
         'server': server,
@@ -103,7 +103,7 @@ def log(server, nick, what, **data):
 def meify(bot, nick):
     if bot.nickname == nick:
         return 'me'
-    return nick
+    return bot.highlight(nick)
 
 
 ## Commands and hooks.
@@ -115,16 +115,16 @@ def seen(bot, server, target, source, message, parsed, private, admin):
 
     # Weed out the odd cases.
     if nick == source:
-        bot.message(target, _('Asking for yourself?', serv=server, nick=nick))
+        yield from bot.message(target, _(bot, 'Asking for yourself?', serv=server, nick=nick))
         return
     elif nick == bot.nickname:
-        bot.message(target, _("I'm right here.", serv=server, nick=nick))
+        yield from bot.message(target, _(bot, "I'm right here.", serv=server, nick=nick))
         return
 
     # Do we have an entry for this nick?
     entry = db.from_('seen').where('nickname', nick.lower()).and_('server', server).single('action', 'data', 'time')
     if not entry:
-        bot.message(target, _("I don't know who {nick} is.", serv=server, nick=nick))
+        yield from bot.message(target, _(bot, "I don't know who {nick} is.", serv=server, nick=meify(bot, nick)))
         return
 
     message = 'I saw {nick} {timeago}, {action}'
@@ -136,66 +136,66 @@ def seen(bot, server, target, source, message, parsed, private, admin):
 
     # Huge if/else chain incoming.
     if action == Actions.JOIN:
-        submessage = _('joining {chan}.', serv=server, **data)
+        submessage = _(bot, 'joining {chan}.', serv=server, **data)
     elif action == Actions.PART:
-        submessage = _('leaving {chan}, with reason "{reason}".', serv=server, **data)
+        submessage = _(bot, 'leaving {chan}, with reason "{reason}".', serv=server, **data)
     elif action == Actions.QUIT:
-        submessage = _('disconnecting with reason "{reason}".', serv=server, **data)
+        submessage = _(bot, 'disconnecting with reason "{reason}".', serv=server, **data)
     elif action == Actions.KICK:
-        submessage = _('kicking {target} from {chan} with reason "{reason}".', serv=server, **data)
+        submessage = _(bot, 'kicking {target} from {chan} with reason "{reason}".', serv=server, **data)
     elif action == Actions.KICKED:
-        submessage = _('getting kicked from {chan} by {kicker} with reason "{reason}".', serv=server, **data)
+        submessage = _(bot, 'getting kicked from {chan} by {kicker} with reason "{reason}".', serv=server, **data)
     elif action == Actions.NICKCHANGE:
-        submessage = _('changing nickname to {newnick}.', serv=server, **data)
+        submessage = _(bot, 'changing nickname to {newnick}.', serv=server, **data)
     elif action == Actions.NICKCHANGED:
-        submessage = _('changing nickname from {oldnick}.', serv=server, **data)
+        submessage = _(bot, 'changing nickname from {oldnick}.', serv=server, **data)
     elif action == Actions.MESSAGE:
-        submessage = _('telling {chan} "<{nick}> {message}".', serv=server, nick=nick, **data)
+        submessage = _(bot, 'telling {chan} "<{nick}> {message}".', serv=server, nick=nick, **data)
     elif action == Actions.NOTICE:
-        submessage = _('noticing {chan} "*{nick}* {message}".', serv=server, nick=nick **data)
+        submessage = _(bot, 'noticing {chan} "*{nick}* {message}".', serv=server, nick=nick **data)
     elif action == Actions.TOPICCHANGE:
-        submessage = _('changing topic for {chan} to "{topic}".', serv=server, **data)
+        submessage = _(bot, 'changing topic for {chan} to "{topic}".', serv=server, **data)
     elif action == Actions.CTCP:
-        submessage = _('CTCPing {target} ({message}).', serv=server, **data)
+        submessage = _(bot, 'CTCPing {target} ({message}).', serv=server, **data)
     else:
-        submessage = _('doing something.', serv=server, **data)
+        submessage = _(bot, 'doing something.', serv=server, **data)
 
-    message = _(message, action=submessage, nick=nick, serv=server, rawtime=time, timeago=timespan(time))
-    bot.message(target, message)
+    message = _(bot, message, action=submessage, nick=meify(bot, nick), serv=server, rawtime=time, timeago=timespan(time))
+    yield from bot.message(target, message)
 
-@hook('irc.join')
+@hook('chat.join')
 def join(bot, server, channel, who):
     log(server, who, Actions.JOIN, chan=channel)
 
-@hook('irc.part')
+@hook('chat.part')
 def part(bot, server, channel, who, reason):
     log(server, who, Actions.PART, chan=channel, reason=reason)
 
-@hook('irc.disconnect')
+@hook('chat.disconnect')
 def quit(bot, server, who, reason):
     log(server, who, Actions.QUIT, reason=reason)
 
-@hook('irc.kick')
+@hook('chat.kick')
 def kick(bot, server, channel, target, by, reason):
     log(server, by, Actions.KICK, chan=channel, target=meify(bot, target), reason=reason)
     log(server, target, Actions.KICKED, chan=channel, kicker=meify(bot, by), reason=reason)
 
-@hook('irc.nickchange')
+@hook('chat.nickchange')
 def nickchange(bot, server, who, to):
     log(server, who, Actions.NICKCHANGE, newnick=to)
     log(server, to, Actions.NICKCHANGED, oldnick=who)
 
-@hook('irc.message')
+@hook('chat.message')
 def message(bot, server, target, who, message, private, admin):
     if not private:
         log(server, who, Actions.MESSAGE, chan=target, message=message)
 
-@hook('irc.notice')
+@hook('chat.notice')
 def notice(bot, server, target, who, message, private, admin):
     if not private:
         log(server, who, Actions.NOTICE, chan=target, message=message)
 
-@hook('irc.topicchange')
+@hook('chat.topicchange')
 def topicchange(bot, server, channel, who, topic):
     log(server, who, Actions.TOPICCHANGE, chan=channel, topic=topic)
 

@@ -23,7 +23,7 @@ config.item('gatekeeper.ban.proxy_format', None)
 
 ## Hooks.
 
-@hook('irc.join')
+@hook('chat.join')
 def join(bot, server, channel, who):
     if who in config.list('gatekeeper.whitelist', server, channel):
         return

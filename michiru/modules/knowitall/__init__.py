@@ -1,6 +1,7 @@
 # Know-it-all module.
 import random
 import heapq
+import asyncio
 
 from michiru import personalities
 from michiru.modules import command
@@ -43,26 +44,28 @@ def raw_whatis(bot, server, target, source, message, parsed, private, admin):
     if addressed.lower() != bot.nickname.lower():
         return
 
-    definition = get_definition(bot, wanted, source=source, server=server, channel=target)
-    bot.message(target, _('{factoid}: {definition}', source=source, factoid=wanted, definition=definition))
+    definition = yield from get_definition(bot, wanted, source=source, server=server, channel=target)
+    yield from bot.message(target, _(bot, '{factoid}: {definition}', source=source, factoid=wanted, definition=definition))
 
 @command('(?:what|who|where|how|why)(?: am| is|\'s|are|\'re) (?:an? |the )?(.+)\??$')
 @command('(tell .+)\.?')
 @command('define (.+)\.?')
 def whatis(bot, server, target, source, message, parsed, private, admin):
     wanted = parsed.group(1).strip()
-    definition = get_definition(bot, wanted, source=source, server=server, channel=target)
-    bot.message(target, _('{factoid}: {definition}', source=source, factoid=wanted, definition=definition))
+    definition = yield from get_definition(bot, wanted, source=source, server=server, channel=target)
+    yield from bot.message(target, _(bot, '{factoid}: {definition}', source=source, factoid=wanted, definition=definition))
 
 
 ## Utility functions.
 
+@asyncio.coroutine
 def define_builtin(definition, bot, source, server, channel):
     if definition == bot.nickname:
-        return _('Me.')
+        return _(bot, 'Me.')
     elif wanted == source:
-        return _('You.')
+        return _(bot, 'You.')
 
+@asyncio.coroutine
 def get_definition(bot, wanted, sources=None, source=None, server=None, channel=None):
     """ Try to define something through several sources. """
     definition = None
@@ -71,7 +74,7 @@ def get_definition(bot, wanted, sources=None, source=None, server=None, channel=
         if sources and name not in sources:
             continue
         try:
-            definition = f(wanted, bot, source, server, channel)
+            definition = yield from f(wanted, bot, source, server, channel)
         except:
             continue
         if definition:
@@ -80,9 +83,9 @@ def get_definition(bot, wanted, sources=None, source=None, server=None, channel=
     # Dummy texts.
     if not definition:
         dunnolol = [
-            _('I have no idea what you\'re talking about.', wanted=wanted),
-            _('What is this you are speaking of?', wanted=wanted),
-            _('I\'ll keep it in mind for next time.', wanted=wanted)
+            _(bot, 'I have no idea what you\'re talking about.', wanted=wanted),
+            _(bot, 'What is this you are speaking of?', wanted=wanted),
+            _(bot, 'I\'ll keep it in mind for next time.', wanted=wanted)
         ]
         definition = random.choice(dunnolol)
 

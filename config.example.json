@@ -6,11 +6,17 @@
 
   "servers": {
     "rizon": {
+      "type": "irc",
       "host": "irc.rizon.net",
       "tls": true,
       "channels": ["#michiru"],
       "nickname": "Michiru",
       "nickserv_password": null
+    },
+    "salty": {
+      "type": "discord",
+      "name": "Salty Salty Discord",
+      "token": "<xxx>"
     }
   },
 

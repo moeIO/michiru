@@ -1,5 +1,6 @@
 # Know-it-all UrbanDictionary module.
 import re
+import asyncio
 import urbandict
 
 
@@ -13,8 +14,9 @@ __desc__ = 'Get (questionable) knowledge from Urban Dictionary.'
 
 ## Module.
 
+@asyncio.coroutine
 def define_urbandict(definition, bot, source, server, channel):
-    res = urbandict.define(definition)
+    res = yield from bot.loop.run_in_executor(None, urbandict.define, definition)
     if res:
         definition = res['definitions'][0]['definition']
         # Remove annoying formatting we can't do anything with.

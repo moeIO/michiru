@@ -3,7 +3,7 @@
 import argparse
 from . import config
 
-parser = argparse.ArgumentParser(description='Yet another IRC bot', prog='michiru')
+parser = argparse.ArgumentParser(description='Yet another chat bot', prog='michiru')
 parser.add_argument('-c', '--config-dir', help='Configuration directory.')
 args = parser.parse_args()
 
@@ -14,7 +14,7 @@ from . import db
 db.connect()
 
 # Load rest.
-from . import events, irc, personalities, modules
+from . import events, chat, personalities, modules, transports
 
 # The only hardcoded module.
 modules.load('core')
@@ -22,8 +22,8 @@ modules.load('core')
 for module in config.current['modules']:
     modules.load(module)
 
-# And do the IRC.
-irc.run_forever()
+# And do the chat.
+chat.run_forever()
 
 # Clean up.
 modules.unload_all()

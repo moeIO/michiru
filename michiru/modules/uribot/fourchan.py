@@ -19,7 +19,7 @@ URI_REGEXP = re.compile(r'^https?://boards\.4chan\.org/([a-z0-9]+)/thread/([0-9]
 
 ## Module.
 
-def uri_4chan(response, matches):
+def uri_4chan(bot, response, matches):
     """ Extract 4chan thread information. """
     thread = json.loads(response.text)
 
@@ -53,8 +53,8 @@ def uri_4chan(response, matches):
         # Use post contents as URL title, stripped from HTML and cut down.
         # We need to invent our own newlines.
         comment = comment.replace('<br>', '\n')
-        comment = comment.replace('<s>', personalities.IRC_CODES['spoiler'])
-        comment = comment.replace('</s>', personalities.IRC_CODES['/spoiler'])
+        comment = comment.replace('<s>', bot.FORMAT_CODES['spoiler'])
+        comment = comment.replace('</s>', bot.FORMAT_CODES['/spoiler'])
         comment = comment.replace('\n', ' ')
         raw_title = ''.join(bs4.BeautifulSoup(comment).find_all(text=True))
 

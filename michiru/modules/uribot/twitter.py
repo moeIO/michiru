@@ -18,7 +18,7 @@ URI_REGEXP = re.compile(r'^https?://(?:www\.){0,1}twitter\.com/([a-zA-Z0-9_-]+)/
 
 ## Module.
 
-def uri_twitter(response, matches):
+def uri_twitter(bot, response, matches):
     """ Extract Twitter status information. """
     html = bs4.BeautifulSoup(response.text)
 

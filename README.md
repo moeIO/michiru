@@ -1,7 +1,7 @@
 Michiru
 =======
 
-Yet Another IRC Bot.
+Yet Another Chat Bot.
 
 Installing
 ----------

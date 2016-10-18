@@ -48,18 +48,18 @@ def decide(bot, server, target, source, message, parsed, private, admin):
     options = re.split(r'\s*(?:\sor\s|,)\s*', parsed.group(1), re.IGNORECASE)
     if len(options) == 1:
         options = {
-            _('Yes.'): 0.4,
-            _('No.'): 0.4,
-            _('Maybe.'): 0.05,
-            _('Ask again later.'): 0.05,
-            _('Why are you asking me?'): 0.05,
-            _('Outlook hazy.'): 0.05
+            _(bot, 'Yes.'): 0.4,
+            _(bot, 'No.'): 0.4,
+            _(bot, 'Maybe.'): 0.05,
+            _(bot, 'Ask again later.'): 0.05,
+            _(bot, 'Why are you asking me?'): 0.05,
+            _(bot, 'Outlook hazy.'): 0.05
         }
     else:
         options = {option.strip(): 1 for option in options}
 
     option = weighed_choice(options)
-    bot.message(target, _('{targ}: {decision}', targ=source, decision=option))
+    yield from bot.message(target, _(bot, '{targ}: {decision}', targ=bot.highlight(source), decision=option))
 
 
 def load():

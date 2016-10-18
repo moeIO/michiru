@@ -19,7 +19,7 @@ URI_REGEXP = re.compile(r'^https?://(?:www\.)?twitch\.tv/([a-zA-Z0-0_-]+)$')
 
 ## Module.
 
-def uri_twitch(response, matches):
+def uri_twitch(bot, response, matches):
     """ Extract Twitch.tv channel information. """
     channel = json.loads(response.text)
 

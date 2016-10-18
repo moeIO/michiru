@@ -20,7 +20,7 @@ URI_REGEXP = re.compile(r'^https?://(?:www\.)youtube\.com/watch\?(?:\S*)v=([a-zA
 
 ## Module.
 
-def uri_youtube(response, matches):
+def uri_youtube(bot, response, matches):
     """ Extract YouTube video information. """
     video = json.loads(response.text)
     info = video['items'][0]['snippet']

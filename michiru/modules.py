@@ -5,6 +5,7 @@ import os.path as path
 import re
 import functools
 import importlib
+import asyncio
 
 from . import config, \
               events, \
@@ -100,7 +101,7 @@ def command(pattern, bare=False, case_sensitive=False, fallback=False):
     global _commands
 
     def inner(func):
-        _commands.append((pattern, func, bare, case_sensitive, fallback))
+        _commands.append((pattern, asyncio.coroutine(func), bare, case_sensitive, fallback))
         return func
     return inner
 
@@ -109,7 +110,7 @@ def hook(event):
     global _hooks
 
     def inner(func):
-        _hooks.append((event, func))
+        _hooks.append((event, asyncio.coroutine(func)))
         return func
     return inner
 
@@ -131,7 +132,7 @@ def load(name, soft=True, reload=False):
         except EnvironmentError:
             pass
     if not soft and name in modules.keys():
-        raise EnvironmentError(_('Module {mod} already loaded.', mod=name))
+        raise EnvironmentError('Module {mod} already loaded.'.format(mod=name))
 
     # Attempt to locate the module.
     if not soft or name not in modules.keys():
@@ -141,7 +142,7 @@ def load(name, soft=True, reload=False):
         try:
             module = importlib.import_module(fullname)
         except Exception as e:
-            raise EnvironmentError(_('Error while loading module {mod}: {err}', mod=name, err=e))
+            raise EnvironmentError('Error while loading module {mod}: {err}'.format(mod=name, err=e))
 
         # Add command and hook registering/unregistering automagic to load/unload functions.
         if _commands or _hooks:
@@ -178,7 +179,7 @@ def load(name, soft=True, reload=False):
     # And initialize the module.
     module, initialized, enabled = modules[name]
     if initialized and not soft and not reload:
-        raise EnvironmentError(_('Module {mod} already loaded.', mod=name))
+        raise EnvironmentError('Module {mod} already loaded.'.format(mod=name))
 
     # Load dependencies.
     for dep in getattr(module, '__deps__', []):
@@ -193,7 +194,7 @@ def load(name, soft=True, reload=False):
         except Exception as e:
             del modules[name]
             del sys.modules[fullname]
-            raise EnvironmentError(_('Error while loading module {mod}: {err}', mod=name, err=e))
+            raise EnvironmentError('Error while loading module {mod}: {err}'.format(mod=name, err=e))
 
         modules[name] = module, True, enabled
 
@@ -212,18 +213,18 @@ def unload(name, soft=True):
 
     if name not in modules.keys():
         # Not loaded.
-        raise EnvironmentError(_('Module {mod} is not loaded.', mod=name))
+        raise EnvironmentError('Module {mod} is not loaded.'.format(mod=name))
 
     module, initialized, enabled = modules[name]
     if not initialized:
-        raise EnvironmentError(_('Module {mod} is not loaded.', mod=name))
+        raise EnvironmentError('Module {mod} is not loaded.'.format(mod=name))
 
     # Run unload routine.
     try:
         module.unload()
     except Exception as e:
         if soft:
-            raise EnvironmentError(_('Error while unloading module {mod}: {err}', mod=name, err=e))
+            raise EnvironmentError('Error while unloading module {mod}: {err}'.format(mod=name, err=e))
 
     # Delete module from dict and config if we're doing a hard unload.
     if not soft:
