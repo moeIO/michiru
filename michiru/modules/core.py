@@ -543,7 +543,7 @@ def evaluate(bot, server, target, source, message, parsed, private, admin):
 @command(r'change nick(?:name)? to (\S+)\.?$')
 @restricted
 def nick(bot, server, target, source, message, parsed, private, admin):
-    bot.nick(parsed.group(1))
+    yield from bot.nick(parsed.group(1))
 
 @command(r'help\??')
 @command(r'commands')
