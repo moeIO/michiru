@@ -147,25 +147,26 @@ def load(name, soft=True, reload=False):
         # Add command and hook registering/unregistering automagic to load/unload functions.
         if _commands or _hooks:
             # I love capturing variables.
-            cmds = _commands
-            hks = _hooks
+            module_cmds = _commands
+            module_hks = _hooks
+            module_name = name
             module_load = module.load
             module_unload = module.unload
 
             # And local functions.
             @functools.wraps(module_load)
             def overridden_load():
-                for pattern, cmd, bare, case_sensitive, fallback in cmds:
-                    register_command(name, pattern, cmd, bare, case_sensitive, fallback)
-                for event, cmd in hks:
+                for pattern, cmd, bare, case_sensitive, fallback in module_cmds:
+                    register_command(module_name, pattern, cmd, bare, case_sensitive, fallback)
+                for event, cmd in module_hks:
                     events.register_hook(event, cmd)
                 return module_load()
 
             @functools.wraps(module_unload)
             def overridden_unload():
-                for pattern, cmd, bare, case_sensitive, fallback in cmds:
-                    unregister_command(name, pattern, cmd, bare, case_sensitive, fallback)
-                for event, cmd in hks:
+                for pattern, cmd, bare, case_sensitive, fallback in module_cmds:
+                    unregister_command(module_name, pattern, cmd, bare, case_sensitive, fallback)
+                for event, cmd in module_hks:
                     events.unregister_hook(event, cmd)
                 return module_unload()
 
