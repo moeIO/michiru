@@ -1,4 +1,4 @@
-# Test hook.
+# GitLab hook.
 import operator
 import json
 import datetime
