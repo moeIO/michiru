@@ -166,7 +166,8 @@ class IRCClient(pydle.Client):
         server = self.michiru_transport.server
         personalities.set_current(server, None if private else target)
 
-        yield from self.michiru_transport.run_commands(target, by, message, parsed_message, bool(highlight), private)
+        if not self.is_same_nick(self.nickname, by):
+            yield from self.michiru_transport.run_commands(target, by, message, parsed_message, bool(highlight), private)
 
         # And execute hooks.
         yield from events.emit('chat.message', self.michiru_transport, server, target, by, message, private, admin)

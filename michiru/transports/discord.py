@@ -124,7 +124,8 @@ class DiscordClient(discord.Client):
             parsed_contents = ccontents.lstrip(''.join(prefixes))
 
         admin = yield from self.michiru_transports[tag].is_admin(source.name, chan=None if private else target.name)
-        yield from self.michiru_transports[tag].run_commands(target.name, source.name, ccontents, parsed_contents, highlight, private)
+        if source != server.me:
+            yield from self.michiru_transports[tag].run_commands(target.name, source.name, ccontents, parsed_contents, highlight, private)
         yield from events.emit('chat.message', self.michiru_transports[tag], tag, target.name, source.name, ccontents, private, admin)
 
     @asyncio.coroutine
