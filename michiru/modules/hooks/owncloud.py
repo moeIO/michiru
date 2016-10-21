@@ -32,18 +32,23 @@ def handler(config, request):
         ipath = ipath.lstrip('/').split('/', 1)[0]
 
         ident = '{}:{}'.format(message['user'], ipath)
-        if message['mimeType'] == 'httpd/unix-directory':
+        mime = message.get('mimeType')
+        if mime == 'httpd/unix-directory':
             messages = ['{{b}}{} folder on ownCloud:{{/b}} {}'.format(
                 message['action'].capitalize(),
                 path
             )]
-        else:
+        elif mime:
             messages = ['{{b}}{} file on ownCloud:{{/b}} {} (type: {})'.format(
                 message['action'].capitalize(),
                 path,
-                message['mimeType']
+                mime
             )]
-
+        else:
+            messages = ['{{b}}{} file on ownCloud:{{/b}} {}'.format(
+                message['action'].capitalize(),
+                path
+            )]
 
     return (ident, messages)
 
