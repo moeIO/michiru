@@ -341,14 +341,7 @@ def ignores(bot, server, target, source, message, parsed, private, admin):
     elif chan is None:
         chan = target
 
-    ignores = []
-    for w in bot.michiru_ignores:
-        if isinstance(w, tuple):
-            w, ch = w
-        else:
-            ch = None
-        if not ch or ch == chan:
-            ignores.append(w)
+    ignores = bot.ignores_for(chan)
 
     if ignores:
         yield from bot.message(target, _(bot, 'Currently ignoring: {ignores}', ignores=', '.join(ignores)))

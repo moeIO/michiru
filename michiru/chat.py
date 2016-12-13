@@ -86,6 +86,19 @@ class Transport:
         """ Check if user is ignored. """
         return who in self.ignores or (who, chan) in self.ignores
 
+    def ignores_for(self, chan):
+        """ Return list of ignores for channel. """
+        ignores = []
+        for e in self.ignores:
+            if isinstace(e, tuple):
+                who, ch = e
+            else:
+                who = e
+                ch = None
+            if not ch or ch == chan:
+                ignores.append(who)
+        return ignores
+
 
     def promote(self, nick, chan=None):
         """ Promote given user to administrator, optionally only in `chan`. """
